@@ -185,6 +185,51 @@ Neon may **disable** “New project” when your account is tied to **Vercel-man
 
 **Alternative:** If you prefer a **standalone** Neon project created only in the Neon console, use a different email/org or Neon’s [Neon-Managed + Vercel](https://neon.com/docs/guides/neon-managed-vercel-integration) flow—do not mix both integration types in one Vercel project.
 
+#### How to — rotate the database password and verify Vercel (step-by-step)
+
+Use this if a connection string was **posted somewhere unsafe** (chat, ticket, screenshot) or you want a clean baseline.
+
+**A. Open the right place in Neon**
+
+1. Go to [https://console.neon.tech](https://console.neon.tech) and sign in (same identity you use for Vercel/Neon is fine).
+2. In the left column, pick the **Organization** that holds your MSS database (if you used Vercel-managed Neon, it may be named like **`Vercel: …`**).
+3. Click your **MSS** project (the name you gave when installing Neon for `mss`).
+
+**B. Reset the role password (Neon UI names can vary slightly)**
+
+4. Open **project Settings** (gear icon) or look for **Roles**, **Database access**, or **Connection details** on the project dashboard—Neon moves labels occasionally.
+5. Find the **database owner role** used in your URL (often **`neondb_owner`** or similar). Use **Reset password** / **Rotate password** / **Regenerate** if Neon offers it.
+6. Neon will show the **new password only once**. Copy it into a **password manager** or a private note on your machine. **Do not paste it into chat, GitHub, or the Google Config Sheet.**
+
+**C. Refresh connection strings in Neon (to copy the new URL for yourself only)**
+
+7. Still in Neon: open **Dashboard** (or **Branches** → select your **production** branch, usually `main`).
+8. Open **Connection details** / **Connect** and choose the **pooled** / **transaction** connection (hostname usually contains **`pooler`**).
+9. Copy the full **`DATABASE_URL`** line for your own use. **Do not send it to anyone.** You mainly need to know that **Vercel** must end up holding this value, not your repo.
+
+**D. Make sure Vercel has the new secret**
+
+10. Open [https://vercel.com](https://vercel.com) → your **`mss`** project (not only the Integrations page).
+11. Go **Settings** → **Environment Variables**.
+12. Search for **`DATABASE_URL`** (and optionally **`POSTGRES_URL`**).  
+    - **If you use the Vercel ↔ Neon integration:** variables are often **managed**—after a password rotation, **trigger a new production deploy** (Deployments → … → **Redeploy**) and check whether the build/runtime still connects. If deploys fail with “password authentication failed,” open **Storage** (or **Integrations → Neon → Manage**) and look for **refresh / reconnect / sync** for that database, or temporarily **set `DATABASE_URL` manually** for **Production** (and **Preview**) using the **new** pooled string from Neon step 8–9, then redeploy.  
+    - **If variables are manual:** edit **`DATABASE_URL`** for **Production** (paste new pooled URL), repeat for **Preview** if you use a different branch/URL there, **Save**.
+13. From **Deployments**, open the latest deployment → **Redeploy** (or push an empty commit) so running code picks up credentials.
+
+**E. Validate (no secrets required)**
+
+| Check | Where | What “good” looks like |
+|--------|--------|-------------------------|
+| Variables exist | Vercel → **mss** → **Settings** → **Environment Variables** | **`DATABASE_URL`** listed for **Production** (and **Preview** if you use previews). Values show as **masked** (`••••`). |
+| Deploy succeeds | Vercel → **Deployments** | Latest deploy **Ready** / green, not **Error** on the build step. |
+| Database answers | Neon → **SQL Editor** (left nav) | Run `SELECT 1 as ok;` → one row **`1`**. |
+| App still may show Config error | Browser → `https://mss-umber.vercel.app` | **Normal** until **Config Sheet** env vars exist; DB is separate. After Sheet + `NEXTAUTH_*` are set, you should see the real shell. |
+| DB used by API (later) | After Sheet works, call **`/api/init-database`** (with bootstrap secret or admin) | Success JSON; then auth flows can use the DB. |
+
+**F. Local machine (optional)**
+
+14. On your PC, edit **`.env.local`** (never commit): set **`LOCAL_POSTGRES_URL`** or **`DATABASE_URL`** to the **pooled** URL for the branch you use for local dev (often the same as **Preview** / `preview` branch). Restart **`npm run dev`**.
+
 ### 2.2 Google Config Sheet
 
 - [ ] Create Sheet with tabs **`PROD`** and **`STAGE`**.
