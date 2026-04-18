@@ -1,36 +1,23 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MSS
 
-## Getting Started
+Greenfield Next.js application built to match [docs/templates/BASE_APP_REQUIREMENTS.md](docs/templates/BASE_APP_REQUIREMENTS.md): strict Google Sheet configuration, NextAuth (credentials + email confirmation outside local dev), Neon Postgres, admin user management, profile + Vercel Blob avatars, and staging/local environment banners.
 
-First, run the development server:
+## Local development
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Copy `.env.example` to `.env.local` and fill all required variables (Postgres, `NEXTAUTH_SECRET`, Sheet ID/GIDs, SMTP for registration tests without bypass).
+2. Run database initialization once: `GET` or `POST` `/api/init-database` with an admin session, **or** set `DATABASE_BOOTSTRAP_SECRET` and send header `x-database-bootstrap-secret`.
+3. `npm install` then `npm run dev`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+With `DEV_AUTH_BYPASS=true` and `NEXT_PUBLIC_DEV_AUTH_BYPASS=true` in `.env.local`, sign-in uses the seeded bootstrap user without real credentials (see PRD §9).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Documentation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- [Project start checklist (MSS status)](docs/MSS_PROJECT_START_CHECKLIST_COMPLETED.md)
+- [Template checklist](docs/templates/PROJECT_START_CHECKLIST.md)
+- [Iteration log / toolkit improvements](docs/startup/ITERATION_LOG.md)
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev` — Turbopack dev server
+- `npm run build` — Production build
+- `npm run lint` — ESLint

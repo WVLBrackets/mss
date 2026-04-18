@@ -1,0 +1,67 @@
+import { NextResponse } from "next/server";
+import { rateLimitMiddleware, RATE_LIMITS } from "@/lib/rateLimit";
+import { getCurrentEnvironment } from "@/lib/appEnvironment";
+import { validateRegistration } from "@/lib/validation/validators";
+import { hashPassword } from "@/lib/services/authService";
+import { generateSecureToken } from "@/lib/services/tokenService";
+import { createUser, getUserByEmail } from "@/lib/repositories/userRepository";
+import { TokenExpiration } from "@/lib/constants";
+import { sendConfirmationEmail } from "@/lib/emailService";
+import { successResponse, ApiErrors } from "@/lib/api/responses";
+
+export async function POST(request: Request) {
+  try {
+    const limited = rateLimitMiddleware(
+      request,
+      "auth:register",
+      RATE_LIMITS.AUTH_REGISTER,
+    );
+    if (limited) return limited;
+
+    const body = await request.json();
+    const v = validateRegistration({
+      email: body.email,
+      name: body.name,
+      password: body.password,
+      confirmPassword: body.confirmPassword,
+    });
+    if (!v.valid) return ApiErrors.validationError(v.error!);
+
+    const env = getCurrentEnvironment();
+    const existing = await getUserByEmail(body.email, env);
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: "An account with this email already exists", code: "CONFLICT" },
+        { status: 409 },
+      );
+    }
+
+    const passwordHash = await hashPassword(body.password);
+    const token = generateSecureToken();
+    const expires = new Date(Date.now() + TokenExpiration.CONFIRMATION_MS);
+
+    await createUser({
+      email: body.email,
+      name: body.name.trim(),
+      passwordHash,
+      environment: env,
+      confirmationToken: token,
+      confirmationExpires: expires,
+    });
+
+    const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+    const confirmUrl = `${base.replace(/\/$/, "")}/api/auth/confirm?token=${encodeURIComponent(token)}`;
+
+    try {
+      await sendConfirmationEmail(body.email.trim(), body.name.trim(), confirmUrl);
+    } catch (mailErr) {
+      console.error("[register] email failed", mailErr);
+      return ApiErrors.serverError();
+    }
+
+    return successResponse({ sent: true }, "Check your email to confirm your account.");
+  } catch (e) {
+    console.error("[register]", e);
+    return ApiErrors.serverError();
+  }
+}

@@ -1,0 +1,52 @@
+import { put } from "@vercel/blob";
+import { getAuthSession } from "@/lib/auth";
+import { getCurrentEnvironment } from "@/lib/appEnvironment";
+import { updateProfile } from "@/lib/repositories/userRepository";
+import { csrfProtection } from "@/lib/csrf";
+import { successResponse, ApiErrors } from "@/lib/api/responses";
+
+const MAX_BYTES = 2 * 1024 * 1024;
+const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+export async function POST(request: Request) {
+  try {
+    const csrf = csrfProtection(request);
+    if (csrf) return csrf;
+
+    const session = await getAuthSession();
+    const userId = session?.user?.id;
+    if (!userId) return ApiErrors.unauthorized();
+
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!token) {
+      return ApiErrors.validationError("Avatar upload is not configured (BLOB_READ_WRITE_TOKEN)");
+    }
+
+    const form = await request.formData();
+    const file = form.get("file");
+    if (!(file instanceof Blob)) {
+      return ApiErrors.validationError("file is required");
+    }
+    if (file.size > MAX_BYTES) {
+      return ApiErrors.validationError("File too large (max 2MB)");
+    }
+    const type = file.type;
+    if (!ALLOWED.has(type)) {
+      return ApiErrors.validationError("Unsupported file type");
+    }
+
+    const ext = type.split("/")[1] ?? "bin";
+    const pathname = `avatars/${userId}-${Date.now()}.${ext}`;
+    const blob = await put(pathname, file, {
+      access: "public",
+      token,
+    });
+
+    const env = getCurrentEnvironment();
+    await updateProfile({ userId, environment: env, avatarUrl: blob.url });
+    return successResponse({ url: blob.url });
+  } catch (e) {
+    console.error("[user/avatar]", e);
+    return ApiErrors.serverError();
+  }
+}
