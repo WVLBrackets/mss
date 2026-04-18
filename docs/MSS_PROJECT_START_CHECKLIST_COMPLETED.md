@@ -172,6 +172,19 @@ When you have finished steps 1–8 (and 9–10 as applicable), check the **1.2**
 
 When Neon is wired, fill the **Neon project** row in the table at the top of this file (project name in Neon console; no secrets in that table).
 
+#### If Neon says “create project through Vercel” (Vercel-managed Neon)
+
+Neon may **disable** “New project” when your account is tied to **Vercel-managed** billing. That is normal. Create and connect the database **from Vercel** instead:
+
+1. Open the **[Neon integration on the Vercel Marketplace](https://vercel.com/marketplace/neon)** and click **Install** (or in the Vercel dashboard go **Storage** / **Integrations** and add **Neon** — labels vary).
+2. Follow the wizard: accept terms, pick **region** and plan, name the database (this becomes a **Neon project**).
+3. **Connect to your app:** choose Vercel project **`mss`** and which environments get database variables (**Production**, **Preview**, **Development** as you prefer). See Neon’s walkthrough: [Vercel-Managed Integration](https://neon.com/docs/guides/vercel-managed-integration).
+4. **Optional but useful:** enable **Preview Branching** so each Preview deployment gets its own Neon branch (isolated data). Configure in the same connect flow under advanced options.
+5. After connect, Vercel injects **`DATABASE_URL`** (pooled) and related `PG*` / `DATABASE_URL_UNPOOLED` variables per Neon’s [environment variable table](https://neon.com/docs/guides/vercel-managed-integration#environment-variables-set-by-the-integration). **MSS reads `DATABASE_URL` as a fallback** if `PRODUCTION_POSTGRES_URL` / `PREVIEW_POSTGRES_URL` are unset, so you often do **not** need duplicate variables—just ensure **Production** and **Preview** each receive a connection string (Vercel scopes integration vars by environment when you connect).
+6. **Open in Neon:** from Vercel Storage, use **Open in Neon** if you want the Neon Console (project may live under a `Vercel:` organization).
+
+**Alternative:** If you prefer a **standalone** Neon project created only in the Neon console, use a different email/org or Neon’s [Neon-Managed + Vercel](https://neon.com/docs/guides/neon-managed-vercel-integration) flow—do not mix both integration types in one Vercel project.
+
 ### 2.2 Google Config Sheet
 
 - [ ] Create Sheet with tabs **`PROD`** and **`STAGE`**.
