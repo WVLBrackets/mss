@@ -5,9 +5,9 @@ This is a **working copy** of [docs/templates/PROJECT_START_CHECKLIST.md](templa
 | Field | Value (fill in) |
 |--------|-------------------|
 | GitHub repository | https://github.com/WVLBrackets/mss |
-| Vercel project name | _pending_ |
-| Production URL | _pending_ |
-| Preview URL pattern | _pending (e.g. `*.vercel.app`)_ |
+| Vercel project name | `mss` (dashboard); production host `mss-umber.vercel.app` |
+| Production URL | https://mss-umber.vercel.app |
+| Preview URL pattern | Unique URL per deployment (see **Deployments** in Vercel; often `mss-git-<branch>-<org>.vercel.app` style for PRs) |
 | Neon project | _pending_ |
 | Config Sheet ID | _pending_ |
 | Tab `PROD` GID | _pending_ |
@@ -71,10 +71,12 @@ When steps 1–6 are done, check the boxes above for **1.1** (except collaborato
 
 ### 1.2 Vercel
 
-- [ ] Create **Vercel** project linked to the GitHub repo.
-- [ ] Set **Production** branch to `main` (or your release branch).
-- [ ] Confirm **Preview** deployments for PRs / `staging` branch (match team policy).
-- [ ] Add project to correct **Vercel team**; note production URL and preview URL pattern.
+- [x] Create **Vercel** project linked to the GitHub repo.
+- [x] Set **Production** branch to `main` (or your release branch).
+- [x] Confirm **Preview** deployments for PRs / `staging` branch (match team policy).
+- [x] Add project to correct **Vercel team**; note production URL and preview URL pattern.
+
+**Production `NEXTAUTH_URL` (set when you add env vars):** `https://mss-umber.vercel.app` (no trailing slash is conventional; either works if consistent everywhere).
 
 #### How to — create the Vercel project (beginner walkthrough)
 
