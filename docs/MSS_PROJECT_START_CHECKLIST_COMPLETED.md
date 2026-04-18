@@ -134,11 +134,114 @@ When you have finished steps 1–8 (and 9–10 as applicable), check the **1.2**
 - [ ] Create **Neon** project (prod + non-prod recommended).
 - [ ] Copy pooler URLs into Vercel env: `PRODUCTION_POSTGRES_URL`, `PREVIEW_POSTGRES_URL`, and `LOCAL_POSTGRES_URL` in `.env.local`.
 
+#### How to — Neon (beginner walkthrough)
+
+**What Neon is:** A hosted **PostgreSQL** database in the cloud. MSS stores users and sessions there. Vercel runs your **serverless** functions; they connect to Neon over the network using a **connection string** (a URL that includes user, password, host, and database name).
+
+1. **Sign up**  
+   Go to [https://neon.tech](https://neon.tech) and create an account (GitHub login is fine).
+
+2. **Create a project**  
+   Click **Create project**. Pick a name (e.g. `mss`), choose a **region** close to your users or to Vercel (e.g. **AWS US East** if your Vercel builds run in `iad1`). Create the project.
+
+3. **Understand branches**  
+   Neon starts with a default **branch** (often `main`) and a **database** on that branch. For MSS you want **two isolated databases** (or two branches): one for **production** traffic and one for **preview** / non-prod so test data never shares tables with live data.
+
+4. **Create a second branch for preview**  
+   In the Neon console, open your project → **Branches** → **Create branch**. Name it e.g. `preview`, parent **main** (or your default). Neon creates a **separate** database state for that branch.
+
+5. **Get connection strings (use the pooler)**  
+   For **each** branch (`main` = prod, `preview` = preview):
+
+   - Open **Dashboard** → your project → **Branches** → select the branch.  
+   - Find **Connection details** (or **Connect**).  
+   - Choose **Connection pooling** (often labeled **Pooled** or “Serverless driver”) — important for Vercel serverless so you do not exhaust connections.  
+   - Copy the **connection string** (starts with `postgresql://` or `postgres://`).  
+   - Treat these as **secrets** — never paste them into GitHub or the Config Sheet.
+
+6. **Where each string goes**
+
+   | Neon branch | Vercel variable | Vercel environment scope |
+   |-------------|-----------------|---------------------------|
+   | `main` (production) | `PRODUCTION_POSTGRES_URL` | **Production** only |
+   | `preview` (or your non-prod branch) | `PREVIEW_POSTGRES_URL` | **Preview** (and optionally **Development** if you use Vercel CLI env) |
+   | Same as preview, or a dedicated local branch | `LOCAL_POSTGRES_URL` | Your PC only — in **`.env.local`**, not in Git |
+
+7. **Add variables in Vercel**  
+   Vercel project → **Settings** → **Environment Variables**. Add `PRODUCTION_POSTGRES_URL` scoped to **Production**. Add `PREVIEW_POSTGRES_URL` scoped to **Preview** (and **Development** if you want). Use **Save**, then **Redeploy** (or push a commit) so new builds pick them up.
+
+When Neon is wired, fill the **Neon project** row in the table at the top of this file (project name in Neon console; no secrets in that table).
+
 ### 2.2 Google Config Sheet
 
 - [ ] Create Sheet with tabs **`PROD`** and **`STAGE`**.
 - [ ] Add required keys from [BASE_APP_REQUIREMENTS §7](templates/BASE_APP_REQUIREMENTS.md) on both tabs.
 - [ ] Enable **public CSV export**; record Sheet ID and GIDs in env (`SITE_CONFIG_*`).
+
+#### How to — Google Config Sheet (beginner walkthrough)
+
+**What this is:** A **Google Sheet** that holds **non-secret** text (site name, logo URL, welcome messages). MSS reads it as **CSV** over the public export URL. **Never** put passwords or API keys in the sheet.
+
+1. **Create a spreadsheet**  
+   Go to [https://sheets.google.com](https://sheets.google.com) → **Blank** spreadsheet. Title it e.g. `MSS Site Config`.
+
+2. **Name the tabs exactly**  
+   - Rename the first tab to **`PROD`** (all caps).  
+   - Add a second tab named **`STAGE`** (all caps).  
+   Spelling must match; the app picks the tab by **GID** in environment variables.
+
+3. **Row layout (both tabs)**  
+   - **Column A:** parameter name (canonical key, see table below).  
+   - **Column B:** value.  
+   - Optional **row 1** headers: `parameter` | `value` — if you use headers, start keys from **row 2**.
+
+4. **Required keys (same seven rows on both `PROD` and `STAGE`)**  
+   You may use different **values** per tab (e.g. different `site_subtitle` on staging), but every key must exist on **both** tabs.
+
+   | Column A (key) | Column B (example — customize) |
+   |----------------|----------------------------------|
+   | `site_name` | `MSS` |
+   | `site_subtitle` | `Staging` on STAGE tab, short tagline on PROD |
+   | `site_logo_url` | `https://placehold.co/64x64/png` (must be a valid **https** URL) |
+   | `signin_welcome` | `Welcome. Sign in below.` |
+   | `signup_welcome` | `Create an account to get started.` |
+   | `profile_hover` | `Open your profile` |
+
+5. **Make the sheet readable without logging in**  
+   Click **Share** (top right). Under **General access**, set **Anyone with the link** to **Viewer** (wording may vary slightly). This allows MSS on Vercel to fetch the CSV without a Google login. Do **not** use the Config Sheet for secrets.
+
+6. **Spreadsheet ID**  
+   From the browser URL when the spreadsheet is open:
+
+   `https://docs.google.com/spreadsheets/d/`**`SPREADSHEET_ID_HERE`**`/edit...`  
+   Copy only the long ID between `/d/` and `/edit`.
+
+7. **GID for each tab**  
+   - Click the **`PROD`** tab so it is active. Look at the URL; it should contain `gid=`**`NUMBER`**. Copy that number → **`SITE_CONFIG_GID_PROD`**.  
+   - Click the **`STAGE`** tab; copy its `gid=` value → **`SITE_CONFIG_GID_STAGE`**.
+
+8. **Quick test in a browser**  
+   Build this URL (replace `SHEET_ID` and `GID`):
+
+   `https://docs.google.com/spreadsheets/d/SHEET_ID/export?format=csv&gid=GID`  
+
+   Open it in an **incognito/private** window (not logged into Google). You should see CSV text. If you get a sign-in wall or error, sharing is not public enough yet.
+
+9. **Vercel environment variables for the sheet**
+
+   | Variable | Typical scope | Value |
+   |----------|----------------|--------|
+   | `SITE_CONFIG_SHEET_ID` | **Production**, **Preview**, **Development** | Same spreadsheet ID everywhere |
+   | `SITE_CONFIG_GID_PROD` | **Production** only | GID of tab `PROD` |
+   | `SITE_CONFIG_GID_STAGE` | **Preview** and **Development** (and optionally Production if you ever read STAGE there — normally prod uses PROD GID only) | GID of tab `STAGE` |
+
+   MSS logic: **Production** deployments use the **PROD** tab; **Preview** and **local** use the **STAGE** tab.
+
+When done, fill **Config Sheet ID**, **`PROD` GID**, and **`STAGE` GID** in the summary table at the top of this file (IDs only — not secret, but keep the doc private if you prefer).
+
+#### After Neon + Sheet — minimum Vercel env (reminder)
+
+You still need **`NEXTAUTH_URL`**, **`NEXTAUTH_SECRET`**, and (for email flows) **`EMAIL_SERVER_*`** / **`EMAIL_FROM`** before auth behaves fully. Production **`NEXTAUTH_URL`**: `https://mss-umber.vercel.app` (see §1.2). For **Preview**, set **`NEXTAUTH_URL`** to that deployment’s public URL pattern (each preview URL differs; see [Vercel environment variables](https://vercel.com/docs/projects/environment-variables) — some teams use a fixed staging domain for previews).
 
 ### 2.3 Google Cloud
 
