@@ -192,7 +192,9 @@ Every row exists on **both** `PROD` and `STAGE` tabs unless noted. **All listed 
 | `welcome_greeting_logged_in` | string | Home greeting when signed in; user placeholders resolved from DB user when available, else session |
 | `welcome_greeting_logged_out` | string | Home greeting when not signed in; user placeholders use guest fallbacks (`Guest`, `?`) |
 
-**User placeholders** in any of the string cells above: `{Full Name}` (DB / signup full name), `{Display Name}` (display name in the app), `{Initials}` (up to three characters). Matching is **case-insensitive** and allows **optional spaces** inside the braces (e.g. `{display name}`). Legacy `{name}` is treated as an alias for **display name** for older sheet rows. When there is no signed-in user, resolvers use **Guest** / **Guest** / **`?`**.
+**User placeholders** in any of the string cells above: `{Full Name}` (DB / signup full name), `{Display Name}` (display name in the app), `{Initials}` (up to three characters), `{email}` (account email; empty when placeholders are anonymous). Matching is **case-insensitive** and allows **optional spaces** inside the braces (e.g. `{display name}`). Legacy `{name}` is treated as an alias for **display name** for older sheet rows. When there is no signed-in user, resolvers use **Guest** / **Guest** / **`?`** / empty email.
+
+**Commas in values:** In the Config Sheet CSV, values that contain commas must be wrapped in **double quotes** (Google Sheets does this on export). The loader parses quoted fields so commas are not treated as column separators.
 
 **Optional extension keys** beyond this list are template-specific; the base shell’s loader treats the above as **required** when strict mode is on.
 

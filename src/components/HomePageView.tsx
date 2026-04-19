@@ -29,6 +29,7 @@ export async function HomePageView() {
         fullName: row.name,
         displayName: row.display_name,
         initials: row.initials,
+        email: row.email,
       };
     } else {
       placeholders = placeholdersFromSessionUser(session.user);

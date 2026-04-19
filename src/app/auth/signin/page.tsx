@@ -372,10 +372,14 @@ function SignInPageInner() {
       </div>
 
       {mode === "signin" && signinWelcome ? (
-        <p className="mt-3 whitespace-pre-line px-1 text-xs text-neutral-500">{signinWelcome}</p>
+        <p className="mt-3 whitespace-pre-line px-1 text-center text-xs text-neutral-500">
+          {signinWelcome}
+        </p>
       ) : null}
       {mode === "register" && signupWelcome ? (
-        <p className="mt-3 whitespace-pre-line px-1 text-xs text-neutral-500">{signupWelcome}</p>
+        <p className="mt-3 whitespace-pre-line px-1 text-center text-xs text-neutral-500">
+          {signupWelcome}
+        </p>
       ) : null}
     </div>
   );

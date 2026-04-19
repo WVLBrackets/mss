@@ -82,6 +82,34 @@ function normalizeKey(raw: string): string {
     .replace(/[\s-]+/g, "_");
 }
 
+/**
+ * Splits one CSV line into fields, respecting double-quoted segments so commas
+ * inside values are not treated as delimiters (Google Sheets export format).
+ */
+function splitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]!;
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      result.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result.map((s) => s.trim());
+}
+
 function parseCsvRows(text: string): Map<string, string> {
   const map = new Map<string, string>();
   const lines = text.split(/\r?\n/);
@@ -93,12 +121,13 @@ function parseCsvRows(text: string): Map<string, string> {
       continue;
     }
     consecutiveBlank = 0;
-    const cells = line.split(",").map((c) => c.replace(/^"|"$/g, "").trim());
+    const cells = splitCsvLine(line);
     if (cells.length < 2) continue;
-    const [k0, v0] = cells;
+    const k0 = cells[0]!.replace(/^"|"$/g, "").trim();
+    const v0 = cells.slice(1).join(",").trim();
     const nk = normalizeKey(k0);
     if (nk === "parameter" || nk === "key" || nk === "name") continue;
-    map.set(nk, v0 ?? "");
+    map.set(nk, v0);
   }
   return map;
 }
