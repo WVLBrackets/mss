@@ -2,6 +2,10 @@ import { put } from "@vercel/blob";
 import { getAuthSession } from "@/lib/auth";
 import { isSessionAdmin } from "@/lib/adminAuth";
 import { getCurrentEnvironment } from "@/lib/appEnvironment";
+import {
+  formatStoredAvatarFromPut,
+  getBlobStoreAccess,
+} from "@/lib/blobAvatar";
 import { getUserById, updateProfile } from "@/lib/repositories/userRepository";
 import { csrfProtection } from "@/lib/csrf";
 import { successResponse, ApiErrors } from "@/lib/api/responses";
@@ -46,17 +50,19 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const ext = type.split("/")[1] ?? "bin";
     const pathname = `avatars/admin-${targetUserId}-${Date.now()}.${ext}`;
+    const access = getBlobStoreAccess();
     const blob = await put(pathname, file, {
-      access: "public",
+      access,
       token,
     });
 
+    const stored = formatStoredAvatarFromPut(access, blob);
     await updateProfile({
       userId: targetUserId,
       environment: env,
-      avatarUrl: blob.url,
+      avatarUrl: stored,
     });
-    return successResponse({ url: blob.url });
+    return successResponse({ url: stored });
   } catch (e) {
     console.error("[admin/users/avatar POST]", e);
     return ApiErrors.serverError();

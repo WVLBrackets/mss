@@ -44,6 +44,11 @@ export async function initializeDatabase(): Promise<void> {
 
   await sql`
     ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+  `;
+
+  await sql`
+    ALTER TABLE users
       ADD COLUMN IF NOT EXISTS handoff_token TEXT;
   `;
   await sql`

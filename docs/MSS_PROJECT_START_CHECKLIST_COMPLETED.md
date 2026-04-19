@@ -262,17 +262,17 @@ Use this if a connection string was **posted somewhere unsafe** (chat, ticket, s
    | `site_name` | `MSS` |
    | `site_subtitle` | `Staging` on STAGE tab, short tagline on PROD |
    | `site_logo` | `site/logo.svg` (path under **`public/`**; repo includes `public/site/logo.svg`) |
-   | `signin_welcome` | `Welcome. Sign in below.` |
-   | `signup_welcome` | `Create an account to get started.` |
-   | `profile_hover` | `Open your profile` |
+   | `signin_welcome` | `Welcome. Sign in below.` (optional: `{Full Name}`, `{Display Name}`, `{Initials}` — guest fallbacks when not signed in) |
+   | `signup_welcome` | `Create an account to get started.` (same placeholders) |
+   | `profile_hover` | `Open your profile` or e.g. `{Display Name}` — resolved from session when signed in |
    | `acct_confirm_success_header` | e.g. `You're all set` |
    | `acct_confirm_success_message1` | e.g. `Your account is confirmed.` |
    | `acct_confirm_success_button1` | e.g. `Go to Home|/` (label, pipe, then path) |
    | `acct_confirm_success_button2` | `X` to hide, or e.g. `Profile|/profile` |
    | `footer_text` | e.g. `© 2026 My App \| All rights reserved` |
    | `email_contact_address` | Support or app inbox (valid email) |
-   | `welcome_greeting_logged_in` | e.g. `Welcome back, {name}!` — `{name}` = display name when signed in |
-   | `welcome_greeting_logged_out` | e.g. `Welcome! Please sign in.` — `{name}` is still substituted (e.g. “there”) |
+   | `welcome_greeting_logged_in` | e.g. `Welcome back, {Display Name}!` — use `{Full Name}`, `{Display Name}`, `{Initials}`; legacy `{name}` = display name |
+   | `welcome_greeting_logged_out` | e.g. `Welcome! Please sign in.` — same tokens resolve to guest fallbacks when logged out |
 
 5. **Make the sheet readable without logging in**  
    Click **Share** (top right). Under **General access**, set **Anyone with the link** to **Viewer** (wording may vary slightly). This allows MSS on Vercel to fetch the CSV without a Google login. Do **not** use the Config Sheet for secrets.

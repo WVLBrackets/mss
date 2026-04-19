@@ -154,11 +154,11 @@ WMM does **not** implement profile avatar upload in-repo today; the base app **m
 **Default approach (specify in implementation unless product overrides):**
 
 1. **Vercel Blob** (or S3-compatible presigned upload) for binary object storage.
-2. **`users.avatar_url`** (nullable `TEXT`) storing the public or app-served URL after upload.
-3. API route: authenticated POST (with CSRF) accepting multipart file; validate MIME/size; upload; update user row; return new URL.
-4. Next/Image `remotePatterns` must allow the blob host if using optimized images.
+2. **`users.avatar_url`** (nullable `TEXT`) storing either a **public** blob HTTPS URL or, for **private** Vercel Blob stores, an internal `vercel:{pathname}` value plus an authenticated **`/api/avatar/view`** route that streams the file.
+3. API route: authenticated POST (with CSRF) accepting multipart file; validate MIME/size; upload; update user row; return stored value.
+4. Next/Image `remotePatterns` must allow the blob host if using optimized images on **public** URLs only.
 
-Document env vars for Blob in the project checklist (`BLOB_READ_WRITE_TOKEN` etc. per Vercel docs).
+Document env vars for Blob in the project checklist: `BLOB_READ_WRITE_TOKEN`, and **`BLOB_ACCESS=private`** when the linked Vercel Blob store was created as **private** (default upload code uses `public` access otherwise). See [Vercel Blob public vs private](https://vercel.com/docs/storage/vercel-blob#private-and-public-storage).
 
 ---
 
@@ -171,17 +171,19 @@ Every row exists on **both** `PROD` and `STAGE` tabs unless noted. **All listed 
 | `site_name` | string | App title in nav |
 | `site_subtitle` | string | Subtitle under title in nav |
 | `site_logo` | path string | File under `public/` (e.g. `site/logo.svg`), served at `/{path}` |
-| `signin_welcome` | string | HTML-safe or plain text; sign-in panel footer |
-| `signup_welcome` | string | Create-account panel footer |
-| `profile_hover` | string | Tooltip on logged-in avatar |
-| `acct_confirm_success_header` | string | Heading after email confirmation |
+| `signin_welcome` | string | HTML-safe or plain text; sign-in panel footer (see user placeholders below) |
+| `signup_welcome` | string | Create-account panel footer (same placeholders; guest fallbacks when not signed in) |
+| `profile_hover` | string | Tooltip on logged-in avatar (placeholders use the signed-in session user) |
+| `acct_confirm_success_header` | string | Heading after email confirmation (placeholders use the new session after handoff sign-in) |
 | `acct_confirm_success_message1` | string | Body copy on confirmation success page |
-| `acct_confirm_success_button1` | string | `Label` + `\|` + `/path` or `https://…` (required; not `X`) |
+| `acct_confirm_success_button1` | string | `Label` + `\|` + `/path` or `https://…` (required; not `X`); label may include user placeholders |
 | `acct_confirm_success_button2` | string | Same format as button1, or `X` to hide second button |
 | `footer_text` | string | Left column of global footer (e.g. copyright line) |
 | `email_contact_address` | email string | `mailto` target for footer “Contact Us” |
-| `welcome_greeting_logged_in` | string | Home greeting when signed in; `{name}` replaced with display name (fallback from email) |
-| `welcome_greeting_logged_out` | string | Home greeting when not signed in; `{name}` still replaced with a generic fallback (e.g. “there”) for one template |
+| `welcome_greeting_logged_in` | string | Home greeting when signed in; user placeholders resolved from DB user when available, else session |
+| `welcome_greeting_logged_out` | string | Home greeting when not signed in; user placeholders use guest fallbacks (`Guest`, `?`) |
+
+**User placeholders** in any of the string cells above: `{Full Name}` (DB / signup full name), `{Display Name}` (display name in the app), `{Initials}` (up to three characters). Matching is **case-insensitive** and allows **optional spaces** inside the braces (e.g. `{display name}`). Legacy `{name}` is treated as an alias for **display name** for older sheet rows. When there is no signed-in user, resolvers use **Guest** / **Guest** / **`?`**.
 
 **Optional extension keys** beyond this list are template-specific; the base shell’s loader treats the above as **required** when strict mode is on.
 

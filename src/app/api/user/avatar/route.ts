@@ -1,6 +1,10 @@
 import { put } from "@vercel/blob";
 import { getAuthSession } from "@/lib/auth";
 import { getCurrentEnvironment } from "@/lib/appEnvironment";
+import {
+  formatStoredAvatarFromPut,
+  getBlobStoreAccess,
+} from "@/lib/blobAvatar";
 import { updateProfile } from "@/lib/repositories/userRepository";
 import { csrfProtection } from "@/lib/csrf";
 import { successResponse, ApiErrors } from "@/lib/api/responses";
@@ -37,14 +41,16 @@ export async function POST(request: Request) {
 
     const ext = type.split("/")[1] ?? "bin";
     const pathname = `avatars/${userId}-${Date.now()}.${ext}`;
+    const access = getBlobStoreAccess();
     const blob = await put(pathname, file, {
-      access: "public",
+      access,
       token,
     });
 
+    const stored = formatStoredAvatarFromPut(access, blob);
     const env = getCurrentEnvironment();
-    await updateProfile({ userId, environment: env, avatarUrl: blob.url });
-    return successResponse({ url: blob.url });
+    await updateProfile({ userId, environment: env, avatarUrl: stored });
+    return successResponse({ url: stored });
   } catch (e) {
     console.error("[user/avatar]", e);
     return ApiErrors.serverError();

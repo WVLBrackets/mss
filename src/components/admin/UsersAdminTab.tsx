@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchWithCsrf } from "@/lib/fetchWithCsrf";
+import { avatarSrcForImg } from "@/lib/blobAvatar";
 
 interface Row {
   id: string;
@@ -279,11 +280,12 @@ export function UsersAdminTab() {
 
 function UserAvatarThumb({ row }: { row: Row }) {
   const initials = row.initials?.slice(0, 3).toUpperCase() || "?";
-  if (row.avatarUrl) {
+  const thumbSrc = avatarSrcForImg({ userId: row.id }, row.avatarUrl);
+  if (thumbSrc) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={row.avatarUrl}
+        src={thumbSrc}
         alt=""
         className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-neutral-200"
       />
@@ -391,7 +393,10 @@ function EditUserDialog({
   }
 
   const showImg = Boolean(pendingPreview || avatarUrl);
-  const imgSrc = pendingPreview ?? avatarUrl ?? "";
+  const imgSrc =
+    pendingPreview ??
+    avatarSrcForImg({ userId: row.id }, avatarUrl) ??
+    "";
   const initialsDisplay = initials.trim().toUpperCase().slice(0, 3) || "?";
 
   return (

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { LogOut, X } from "lucide-react";
 import { fetchWithCsrf } from "@/lib/fetchWithCsrf";
+import { avatarSrcForImg } from "@/lib/blobAvatar";
 
 type ProfilePayload = {
   email: string;
@@ -243,7 +244,8 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
   if (!open) return null;
 
   const showAvatarImage = Boolean(pendingPreviewUrl || serverAvatarUrl);
-  const avatarSrc = pendingPreviewUrl ?? serverAvatarUrl ?? "";
+  const avatarSrc =
+    pendingPreviewUrl ?? avatarSrcForImg("self", serverAvatarUrl) ?? "";
   const initialsDisplay = initials.trim().toUpperCase().slice(0, 3) || "?";
 
   return (
@@ -394,7 +396,7 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
                     </button>
                     <p className="mt-1 text-xs text-neutral-500">
                       {uploadAvailable
-                        ? "Applied when you click Save."
+                        ? "Applied when you click Save. If the Vercel Blob store is private, set BLOB_ACCESS=private for this deployment."
                         : "Uploads require BLOB_READ_WRITE_TOKEN in Vercel for this environment."}
                     </p>
                   </div>

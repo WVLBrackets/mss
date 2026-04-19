@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Home, Shield, UserCircle } from "lucide-react";
 import { useState } from "react";
+import {
+  placeholdersFromSessionUser,
+  resolveUserPlaceholders,
+} from "@/lib/configPlaceholders";
 import { publicAssetUrl, type SiteConfig } from "@/lib/siteConfig";
 import { EnvironmentBanner } from "@/components/EnvironmentBanner";
 import { ProfileModal } from "@/components/ProfileModal";
@@ -62,7 +66,10 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
               <button
                 type="button"
                 className="cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-neutral-400"
-                title={siteConfig.profile_hover}
+                title={resolveUserPlaceholders(
+                  siteConfig.profile_hover,
+                  placeholdersFromSessionUser(session?.user ?? {}),
+                )}
                 onClick={() => setProfileOpen(true)}
                 data-testid="profile-avatar-button"
               >

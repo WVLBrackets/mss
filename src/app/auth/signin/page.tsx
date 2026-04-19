@@ -6,6 +6,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SiteConfig } from "@/lib/siteConfig";
 import { BOOTSTRAP_ADMIN_EMAIL } from "@/lib/constants";
+import {
+  ANONYMOUS_USER_PLACEHOLDERS,
+  resolveUserPlaceholders,
+} from "@/lib/configPlaceholders";
 
 export default function SignInPageWrapper() {
   return (
@@ -186,7 +190,12 @@ function SignInPageInner() {
             </p>
           ) : null}
           {siteConfig ? (
-            <p className="whitespace-pre-line text-xs text-neutral-500">{siteConfig.signin_welcome}</p>
+            <p className="whitespace-pre-line text-xs text-neutral-500">
+              {resolveUserPlaceholders(
+                siteConfig.signin_welcome,
+                ANONYMOUS_USER_PLACEHOLDERS,
+              )}
+            </p>
           ) : null}
         </form>
       ) : (
@@ -256,7 +265,12 @@ function SignInPageInner() {
             </button>
           ) : null}
           {siteConfig ? (
-            <p className="whitespace-pre-line text-xs text-neutral-500">{siteConfig.signup_welcome}</p>
+            <p className="whitespace-pre-line text-xs text-neutral-500">
+              {resolveUserPlaceholders(
+                siteConfig.signup_welcome,
+                ANONYMOUS_USER_PLACEHOLDERS,
+              )}
+            </p>
           ) : null}
         </form>
       )}

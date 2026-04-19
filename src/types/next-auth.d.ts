@@ -6,6 +6,8 @@ declare module "next-auth" {
       id: string;
       isAdmin?: boolean;
       initials?: string;
+      /** DB `users.name` (full / legal name); `name` on session is display name. */
+      fullName?: string;
     };
   }
 
@@ -13,6 +15,7 @@ declare module "next-auth" {
     id: string;
     isAdmin?: boolean;
     initials?: string;
+    fullName?: string;
   }
 }
 
@@ -20,5 +23,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     initials?: string;
+    fullName?: string;
   }
 }

@@ -109,6 +109,7 @@ Set in **Vercel → Project → Settings → Environment Variables** (scope Prod
 | `DEV_AUTH_BYPASS` | **unset / false** | **unset / false** | `true` for local fake login |
 | `DEV_AUTH_EMAIL` | — | — | `wvanderlaan@gmail.com` (optional) |
 | `BLOB_READ_WRITE_TOKEN` | If using Vercel Blob | Preview token or shared | Dev token |
+| `BLOB_ACCESS` | Set to `private` when the Vercel Blob store is **private**; omit or `public` for public stores | Match store type | Match store type |
 | `DATABASE_BOOTSTRAP_SECRET` | _(Optional)_ One-time init secret for `x-database-bootstrap-secret` on `/api/init-database` | Same or unset | Same or unset |
 | `NEXT_PUBLIC_DEV_AUTH_BYPASS` | **unset / false** | **unset / false** | `true` when `DEV_AUTH_BYPASS=true` so the sign-in UI can show local-dev copy |
 

@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import type { SiteConfig } from "@/lib/siteConfig";
 import { parseConfigButton } from "@/lib/configButton";
+import {
+  placeholdersFromSessionUser,
+  resolveUserPlaceholders,
+} from "@/lib/configPlaceholders";
 
 type Phase = "signing_in" | "ready" | "error";
 
@@ -17,6 +21,7 @@ export function AccountConfirmedClient({
 }) {
   const [phase, setPhase] = useState<Phase>(() => (handoffToken ? "signing_in" : "error"));
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const { data: session, status: sessionStatus } = useSession();
 
   useEffect(() => {
     if (!handoffToken) return;
@@ -41,9 +46,6 @@ export function AccountConfirmedClient({
       cancelled = true;
     };
   }, [handoffToken]);
-
-  const b1 = parseConfigButton(siteConfig.acct_confirm_success_button1);
-  const b2 = parseConfigButton(siteConfig.acct_confirm_success_button2);
 
   if (phase === "signing_in") {
     return (
@@ -75,14 +77,35 @@ export function AccountConfirmedClient({
     );
   }
 
+  if (sessionStatus === "loading" || !session?.user) {
+    return (
+      <div className="max-w-lg">
+        <p className="text-neutral-600">Completing sign-in…</p>
+      </div>
+    );
+  }
+
+  const placeholders = placeholdersFromSessionUser(session.user);
+
+  const header = resolveUserPlaceholders(
+    siteConfig.acct_confirm_success_header,
+    placeholders,
+  );
+  const message1 = resolveUserPlaceholders(
+    siteConfig.acct_confirm_success_message1,
+    placeholders,
+  );
+  const b1 = parseConfigButton(
+    resolveUserPlaceholders(siteConfig.acct_confirm_success_button1, placeholders),
+  );
+  const b2 = parseConfigButton(
+    resolveUserPlaceholders(siteConfig.acct_confirm_success_button2, placeholders),
+  );
+
   return (
     <div className="max-w-lg space-y-4">
-      <h1 className="text-2xl font-semibold text-neutral-900">
-        {siteConfig.acct_confirm_success_header}
-      </h1>
-      <p className="whitespace-pre-line text-neutral-700">
-        {siteConfig.acct_confirm_success_message1}
-      </p>
+      <h1 className="text-2xl font-semibold text-neutral-900">{header}</h1>
+      <p className="whitespace-pre-line text-neutral-700">{message1}</p>
       <div className="flex flex-wrap gap-3 pt-2">
         {b1 !== "hidden" ? <NavButton label={b1.label} href={b1.path} /> : null}
         {b2 !== "hidden" ? <NavButton label={b2.label} href={b2.path} /> : null}

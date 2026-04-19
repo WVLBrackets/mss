@@ -12,6 +12,7 @@ import {
 } from "@/lib/repositories/userRepository";
 import { verifyPassword } from "@/lib/services/authService";
 import { isUserAdmin } from "@/lib/adminAuth";
+import { sessionImageFromStoredAvatar } from "@/lib/blobAvatar";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -38,7 +39,8 @@ export const authOptions: NextAuthOptions = {
             id: user.id,
             email: user.email,
             name: user.display_name,
-            image: user.avatar_url ?? undefined,
+            fullName: user.name,
+            image: sessionImageFromStoredAvatar(user.avatar_url),
             initials: user.initials,
           };
         }
@@ -58,7 +60,8 @@ export const authOptions: NextAuthOptions = {
             id: user.id,
             email: user.email,
             name: user.display_name,
-            image: user.avatar_url ?? undefined,
+            fullName: user.name,
+            image: sessionImageFromStoredAvatar(user.avatar_url),
             initials: user.initials,
           };
         }
@@ -80,7 +83,8 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.display_name,
-          image: user.avatar_url ?? undefined,
+          fullName: user.name,
+          image: sessionImageFromStoredAvatar(user.avatar_url),
           initials: user.initials,
         };
       },
@@ -92,7 +96,11 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.name = user.name;
         token.picture = user.image;
-        const u = user as { initials?: string };
+        const u = user as { initials?: string; fullName?: string };
+        token.fullName =
+          typeof u.fullName === "string" && u.fullName.trim()
+            ? u.fullName.trim()
+            : "";
         token.initials =
           typeof u.initials === "string" && u.initials
             ? u.initials.slice(0, 3)
@@ -103,7 +111,8 @@ export const authOptions: NextAuthOptions = {
         const row = await getUserById(String(token.id), env);
         if (row) {
           token.name = row.display_name;
-          token.picture = row.avatar_url ?? undefined;
+          token.fullName = row.name;
+          token.picture = sessionImageFromStoredAvatar(row.avatar_url);
           token.initials = row.initials.slice(0, 3);
         }
       }
@@ -117,6 +126,12 @@ export const authOptions: NextAuthOptions = {
           typeof token.initials === "string" && token.initials
             ? token.initials.slice(0, 3)
             : session.user.name?.slice(0, 3).toUpperCase() ?? "?";
+        session.user.fullName =
+          typeof token.fullName === "string" && token.fullName.trim()
+            ? token.fullName.trim()
+            : "";
+        session.user.image =
+          typeof token.picture === "string" ? token.picture : undefined;
       }
       return session;
     },
