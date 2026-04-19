@@ -49,7 +49,7 @@ export function AccountConfirmedClient({
 
   if (phase === "signing_in") {
     return (
-      <div className="max-w-lg">
+      <div className="max-w-3xl">
         <p className="text-neutral-600">Completing sign-in…</p>
       </div>
     );
@@ -57,7 +57,7 @@ export function AccountConfirmedClient({
 
   if (phase === "error") {
     return (
-      <div className="max-w-lg space-y-3">
+      <div className="max-w-3xl space-y-3">
         {!handoffToken ? (
           <p className="text-neutral-700">
             This confirmation link is invalid or incomplete.
@@ -79,7 +79,7 @@ export function AccountConfirmedClient({
 
   if (sessionStatus === "loading" || !session?.user) {
     return (
-      <div className="max-w-lg">
+      <div className="max-w-3xl">
         <p className="text-neutral-600">Completing sign-in…</p>
       </div>
     );
@@ -103,9 +103,9 @@ export function AccountConfirmedClient({
   );
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="max-w-3xl space-y-4">
       <h1 className="text-2xl font-semibold text-neutral-900">{header}</h1>
-      <p className="whitespace-pre-line text-neutral-700">{message1}</p>
+      <p className="whitespace-pre-line text-pretty text-neutral-700">{message1}</p>
       <div className="flex flex-wrap gap-3 pt-2">
         {b1 !== "hidden" ? <NavButton label={b1.label} href={b1.path} /> : null}
         {b2 !== "hidden" ? <NavButton label={b2.label} href={b2.path} /> : null}
