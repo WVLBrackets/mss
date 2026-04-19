@@ -8,6 +8,8 @@ export interface UserRow {
   confirmation_token_expires: Date | null;
   reset_token: string | null;
   reset_token_expires: Date | null;
+  handoff_token: string | null;
+  handoff_token_expires: Date | null;
   is_admin: boolean;
   avatar_url: string | null;
   environment: string;

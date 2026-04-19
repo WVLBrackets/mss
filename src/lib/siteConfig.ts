@@ -1,13 +1,21 @@
 import { getCurrentEnvironment } from "@/lib/appEnvironment";
 import { Environment } from "@/lib/constants";
+import { parseConfigButton } from "@/lib/configButton";
 
 const REQUIRED_KEYS = [
   "site_name",
   "site_subtitle",
-  "site_logo_url",
+  "site_logo",
   "signin_welcome",
   "signup_welcome",
   "profile_hover",
+  "acct_confirm_success_header",
+  "acct_confirm_success_message1",
+  "acct_confirm_success_button1",
+  "acct_confirm_success_button2",
+  "footer_text",
+  "email_contact_address",
+  "welcome_greeting",
 ] as const;
 
 export type SiteConfigKey = (typeof REQUIRED_KEYS)[number];
@@ -73,27 +81,92 @@ function parseCsvRows(text: string): Map<string, string> {
   return map;
 }
 
-function validateUrl(value: string, key: SiteConfigKey): SiteConfigFailure | null {
-  if (key !== "site_logo_url") return null;
-  try {
-    const u = new URL(value);
-    if (u.protocol !== "http:" && u.protocol !== "https:") {
-      return {
-        kind: "config_error",
-        reason: "invalid_type",
-        key,
-        detail: "expected http(s) URL",
-      };
-    }
-  } catch {
+const SITE_LOGO_RE = /^[a-zA-Z0-9][a-zA-Z0-9/_.-]*$/;
+
+function validateSiteLogo(value: string, key: SiteConfigKey): SiteConfigFailure | null {
+  if (key !== "site_logo") return null;
+  if (value.includes("..") || value.startsWith("/") || value.includes("\\")) {
     return {
       kind: "config_error",
       reason: "invalid_type",
       key,
-      detail: "expected valid URL",
+      detail: "site_logo must be a path under public/ (no .. or leading slash)",
+    };
+  }
+  if (value.length > 200 || !SITE_LOGO_RE.test(value)) {
+    return {
+      kind: "config_error",
+      reason: "invalid_type",
+      key,
+      detail: "site_logo must match [a-zA-Z0-9][a-zA-Z0-9/_.-]*",
     };
   }
   return null;
+}
+
+const EMAIL_CONTACT_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateEmailContact(value: string, key: SiteConfigKey): SiteConfigFailure | null {
+  if (key !== "email_contact_address") return null;
+  if (!EMAIL_CONTACT_RE.test(value.trim())) {
+    return {
+      kind: "config_error",
+      reason: "invalid_type",
+      key,
+      detail: "email_contact_address must be a valid email",
+    };
+  }
+  return null;
+}
+
+function validateNavButton(
+  value: string,
+  key: SiteConfigKey,
+  allowX: boolean,
+): SiteConfigFailure | null {
+  if (
+    key !== "acct_confirm_success_button1" &&
+    key !== "acct_confirm_success_button2"
+  ) {
+    return null;
+  }
+  const t = value.trim();
+  if (key === "acct_confirm_success_button1" && t.toUpperCase() === "X") {
+    return {
+      kind: "config_error",
+      reason: "invalid_type",
+      key,
+      detail: "acct_confirm_success_button1 cannot be X",
+    };
+  }
+  if (allowX && t.toUpperCase() === "X") return null;
+  const parsed = parseConfigButton(value);
+  if (parsed === "hidden") {
+    return {
+      kind: "config_error",
+      reason: "invalid_type",
+      key,
+      detail: "expected Label|/path or http(s) URL path",
+    };
+  }
+  const { path } = parsed;
+  if (!path.startsWith("/") && !path.startsWith("http://") && !path.startsWith("https://")) {
+    return {
+      kind: "config_error",
+      reason: "invalid_type",
+      key,
+      detail: "button path must start with / or http(s)://",
+    };
+  }
+  return null;
+}
+
+function validateValue(key: SiteConfigKey, val: string): SiteConfigFailure | null {
+  return (
+    validateSiteLogo(val, key) ??
+    validateEmailContact(val, key) ??
+    validateNavButton(val, key, key === "acct_confirm_success_button2")
+  );
 }
 
 function buildConfig(map: Map<string, string>): SiteConfig | SiteConfigFailure {
@@ -106,8 +179,8 @@ function buildConfig(map: Map<string, string>): SiteConfig | SiteConfigFailure {
     if (!val.trim()) {
       return { kind: "config_error", reason: "empty", key };
     }
-    const urlErr = validateUrl(val, key);
-    if (urlErr) return urlErr;
+    const err = validateValue(key, val);
+    if (err) return err;
     out[key] = val;
   }
   return out as SiteConfig;
@@ -155,3 +228,12 @@ async function fetchConfigUncached(): Promise<SiteConfig | SiteConfigFailure> {
 export async function loadSiteConfig(): Promise<SiteConfig | SiteConfigFailure> {
   return fetchConfigUncached();
 }
+
+/**
+ * Public URL path for a file under `/public` (leading slash, no duplicate slashes).
+ */
+export function publicAssetUrl(siteLogoPath: string): string {
+  const p = siteLogoPath.replace(/^\/+/, "");
+  return `/${p}`;
+}
+

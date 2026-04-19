@@ -254,17 +254,24 @@ Use this if a connection string was **posted somewhere unsafe** (chat, ticket, s
    - **Column B:** value.  
    - Optional **row 1** headers: `parameter` | `value` — if you use headers, start keys from **row 2**.
 
-4. **Required keys (same seven rows on both `PROD` and `STAGE`)**  
+4. **Required keys (same rows on both `PROD` and `STAGE`)**  
    You may use different **values** per tab (e.g. different `site_subtitle` on staging), but every key must exist on **both** tabs.
 
    | Column A (key) | Column B (example — customize) |
    |----------------|----------------------------------|
    | `site_name` | `MSS` |
    | `site_subtitle` | `Staging` on STAGE tab, short tagline on PROD |
-   | `site_logo_url` | `https://placehold.co/64x64/png` (must be a valid **https** URL) |
+   | `site_logo` | `site/logo.svg` (path under **`public/`**; repo includes `public/site/logo.svg`) |
    | `signin_welcome` | `Welcome. Sign in below.` |
    | `signup_welcome` | `Create an account to get started.` |
    | `profile_hover` | `Open your profile` |
+   | `acct_confirm_success_header` | e.g. `You're all set` |
+   | `acct_confirm_success_message1` | e.g. `Your account is confirmed.` |
+   | `acct_confirm_success_button1` | e.g. `Go to Home|/` (label, pipe, then path) |
+   | `acct_confirm_success_button2` | `X` to hide, or e.g. `Profile|/profile` |
+   | `footer_text` | e.g. `© 2026 My App \| All rights reserved` |
+   | `email_contact_address` | Support or app inbox (valid email) |
+   | `welcome_greeting` | e.g. `Welcome, {name}!` — `{name}` is replaced on the home page |
 
 5. **Make the sheet readable without logging in**  
    Click **Share** (top right). Under **General access**, set **Anyone with the link** to **Viewer** (wording may vary slightly). This allows MSS on Vercel to fetch the CSV without a Google login. Do **not** use the Config Sheet for secrets.

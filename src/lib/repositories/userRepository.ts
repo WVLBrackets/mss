@@ -12,6 +12,8 @@ function mapUser(row: Record<string, unknown>): UserRow {
     confirmation_token_expires: row.confirmation_token_expires as Date | null,
     reset_token: row.reset_token as string | null,
     reset_token_expires: row.reset_token_expires as Date | null,
+    handoff_token: (row.handoff_token as string | null) ?? null,
+    handoff_token_expires: (row.handoff_token_expires as Date | null) ?? null,
     is_admin: Boolean(row.is_admin),
     avatar_url: row.avatar_url as string | null,
     environment: String(row.environment),
@@ -212,4 +214,41 @@ export async function getUserByConfirmationToken(
   `;
   const r = (rows as Record<string, unknown>[])[0];
   return r ? mapUser(r) : null;
+}
+
+export async function setHandoffToken(
+  userId: string,
+  environment: string,
+  token: string,
+  expires: Date,
+): Promise<void> {
+  await sql`
+    UPDATE users SET
+      handoff_token = ${token},
+      handoff_token_expires = ${expires}
+    WHERE id = ${userId} AND environment = ${environment}
+  `;
+}
+
+export async function getUserByHandoffToken(
+  token: string,
+  environment: string,
+): Promise<UserRow | null> {
+  const rows = await sql`
+    SELECT * FROM users
+    WHERE handoff_token = ${token}
+      AND environment = ${environment}
+      AND handoff_token_expires IS NOT NULL
+      AND handoff_token_expires > NOW()
+    LIMIT 1
+  `;
+  const r = (rows as Record<string, unknown>[])[0];
+  return r ? mapUser(r) : null;
+}
+
+export async function clearHandoffToken(userId: string, environment: string): Promise<void> {
+  await sql`
+    UPDATE users SET handoff_token = NULL, handoff_token_expires = NULL
+    WHERE id = ${userId} AND environment = ${environment}
+  `;
 }

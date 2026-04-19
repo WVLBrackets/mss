@@ -5,19 +5,21 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Home, Shield, UserCircle } from "lucide-react";
 import { useState } from "react";
-import type { SiteConfig } from "@/lib/siteConfig";
+import { publicAssetUrl, type SiteConfig } from "@/lib/siteConfig";
 import { EnvironmentBanner } from "@/components/EnvironmentBanner";
 import { ProfileModal } from "@/components/ProfileModal";
+import { SiteFooter, type DeploymentFooterMeta } from "@/components/SiteFooter";
 
 type BannerKind = "none" | "staging" | "local";
 
 interface Props {
   siteConfig: SiteConfig;
   bannerKind: BannerKind;
+  deployment: DeploymentFooterMeta;
   children: React.ReactNode;
 }
 
-export function AppShell({ siteConfig, bannerKind, children }: Props) {
+export function AppShell({ siteConfig, bannerKind, deployment, children }: Props) {
   const pathname = usePathname();
   const { data: session, status, update } = useSession();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -33,7 +35,7 @@ export function AppShell({ siteConfig, bannerKind, children }: Props) {
           <Link href="/" className="flex min-w-0 items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={siteConfig.site_logo_url}
+              src={publicAssetUrl(siteConfig.site_logo)}
               alt=""
               className="h-9 w-9 shrink-0 rounded object-contain"
             />
@@ -95,6 +97,7 @@ export function AppShell({ siteConfig, bannerKind, children }: Props) {
         </nav>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+      <SiteFooter siteConfig={siteConfig} deployment={deployment} />
       <ProfileModal
         open={profileOpen}
         onClose={() => setProfileOpen(false)}

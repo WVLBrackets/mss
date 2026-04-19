@@ -3,7 +3,12 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { getServerSession } from "next-auth";
 import { getCurrentEnvironment } from "@/lib/appEnvironment";
 import { BOOTSTRAP_ADMIN_EMAIL } from "@/lib/constants";
-import { getUserByEmail, updateLastLogin } from "@/lib/repositories/userRepository";
+import {
+  getUserByEmail,
+  getUserByHandoffToken,
+  clearHandoffToken,
+  updateLastLogin,
+} from "@/lib/repositories/userRepository";
 import { verifyPassword } from "@/lib/services/authService";
 import { isUserAdmin } from "@/lib/adminAuth";
 
@@ -18,8 +23,24 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        handoffToken: { label: "Handoff", type: "text" },
       },
       async authorize(credentials) {
+        const handoff = credentials?.handoffToken?.trim();
+        if (handoff) {
+          const env = getCurrentEnvironment();
+          const user = await getUserByHandoffToken(handoff, env);
+          if (!user || !user.email_confirmed) return null;
+          await clearHandoffToken(user.id, env);
+          await updateLastLogin(user.id, env);
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.avatar_url ?? undefined,
+          };
+        }
+
         const devBypass =
           process.env.NODE_ENV === "development" &&
           process.env.DEV_AUTH_BYPASS === "true";

@@ -1,10 +1,21 @@
-export default function HomePage() {
+import { getAuthSession } from "@/lib/auth";
+import { loadSiteConfig, isSiteConfigError } from "@/lib/siteConfig";
+
+export default async function HomePage() {
+  const session = await getAuthSession();
+  const cfg = await loadSiteConfig();
+  if (isSiteConfigError(cfg)) {
+    return null;
+  }
+  const name =
+    session?.user?.name?.trim() ||
+    session?.user?.email?.split("@")[0]?.trim() ||
+    "there";
+  const greeting = cfg.welcome_greeting.replace(/\{name\}/g, name);
+
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-neutral-900">Home</h1>
-      <p className="mt-2 text-neutral-600">
-        Welcome. Use the navigation above to sign in or visit Admin if you have access.
-      </p>
+    <div className="text-2xl font-semibold text-neutral-900 whitespace-pre-line">
+      {greeting}
     </div>
   );
 }

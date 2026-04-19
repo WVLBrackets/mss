@@ -170,12 +170,19 @@ Every row exists on **both** `PROD` and `STAGE` tabs unless noted. **All listed 
 |----------------|------|---------|
 | `site_name` | string | App title in nav |
 | `site_subtitle` | string | Subtitle under title in nav |
-| `site_logo_url` | URL string | Small logo image left of title |
+| `site_logo` | path string | File under `public/` (e.g. `site/logo.svg`), served at `/{path}` |
 | `signin_welcome` | string | HTML-safe or plain text; sign-in panel footer |
 | `signup_welcome` | string | Create-account panel footer |
 | `profile_hover` | string | Tooltip on logged-in avatar |
+| `acct_confirm_success_header` | string | Heading after email confirmation |
+| `acct_confirm_success_message1` | string | Body copy on confirmation success page |
+| `acct_confirm_success_button1` | string | `Label` + `\|` + `/path` or `https://…` (required; not `X`) |
+| `acct_confirm_success_button2` | string | Same format as button1, or `X` to hide second button |
+| `footer_text` | string | Left column of global footer (e.g. copyright line) |
+| `email_contact_address` | email string | `mailto` target for footer “Contact Us” |
+| `welcome_greeting` | string | Home greeting; `{name}` replaced with signed-in user’s name (or a short fallback if anonymous) |
 
-**Optional extension keys** (only if you implement features): e.g. `footer_text` for global footer—if present in v1, list as required; otherwise omit from v1 closed list.
+**Optional extension keys** beyond this list are template-specific; the base shell’s loader treats the above as **required** when strict mode is on.
 
 **Secrets:** Do **not** put database passwords, `NEXTAUTH_SECRET`, or API keys in the Config Sheet. Those stay in **Vercel / `.env.local`** only.
 

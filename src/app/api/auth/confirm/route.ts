@@ -3,7 +3,11 @@ import { getCurrentEnvironment } from "@/lib/appEnvironment";
 import {
   getUserByConfirmationToken,
   updateUserConfirmation,
+  setHandoffToken,
 } from "@/lib/repositories/userRepository";
+import { generateSecureToken } from "@/lib/services/tokenService";
+
+const HANDOFF_TTL_MS = 15 * 60 * 1000;
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -22,5 +26,14 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${base}/auth/signin?error=expired_token`);
   }
   await updateUserConfirmation(user.id, env);
-  return NextResponse.redirect(`${base}/auth/signin?confirmed=1`);
+  const handoff = generateSecureToken();
+  await setHandoffToken(
+    user.id,
+    env,
+    handoff,
+    new Date(Date.now() + HANDOFF_TTL_MS),
+  );
+  return NextResponse.redirect(
+    `${base}/auth/account-confirmed?h=${encodeURIComponent(handoff)}`,
+  );
 }

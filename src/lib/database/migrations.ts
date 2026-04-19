@@ -41,6 +41,19 @@ export async function initializeDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users (reset_token)
       WHERE reset_token IS NOT NULL;
   `;
+
+  await sql`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS handoff_token TEXT;
+  `;
+  await sql`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS handoff_token_expires TIMESTAMPTZ;
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_users_handoff_token ON users (handoff_token)
+      WHERE handoff_token IS NOT NULL;
+  `;
 }
 
 /**
