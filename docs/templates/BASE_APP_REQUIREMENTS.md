@@ -174,14 +174,14 @@ Every row exists on **both** `PROD` and `STAGE` tabs unless noted. **All listed 
 | `site_logo` | path string | File under `public/` (e.g. `site/logo.svg`), served at `/{path}` |
 | `signin_welcome` | string | HTML-safe or plain text; below the sign-in form (see user placeholders below) |
 | `signup_welcome` | string | Below the create-account form (same placeholders; guest fallbacks when not signed in) |
-| `password_reset_message` | string | Shown on forgot-password after submit (same response whether or not the email exists) |
-| `sign_up_confirm` | string | Inline message after successful **or** duplicate-email signup (do not reveal that the email exists) |
-| `dup_email_subject` | string | Subject for email sent when signup uses an email that is already registered |
-| `dup_email_header` | string | Main heading inside that duplicate-email email |
-| `dup_email_greeting` | string | Body line 1 (then line break before next block) |
-| `dup_email_message1` | string | Body paragraph 1 |
-| `dup_email_message2` | string | Body paragraph 2 (then line break before footer) |
-| `dup_email_footer` | string | Footer line(s), centered in the HTML email |
+| `password_reset_message` | string | Shown on forgot-password after submit (same response whether or not the email exists). **Optional:** if missing or empty in the sheet, a built-in default is used so the rest of config still loads. |
+| `sign_up_confirm` | string | Inline message after successful **or** duplicate-email signup (do not reveal that the email exists). Optional default if omitted. |
+| `dup_email_subject` | string | Subject for duplicate-email notice. Optional default if omitted. |
+| `dup_email_header` | string | Main heading inside that email. Optional default. |
+| `dup_email_greeting` | string | Body line 1. Optional default. |
+| `dup_email_message1` | string | Body paragraph 1. Optional default. |
+| `dup_email_message2` | string | Body paragraph 2. Optional default. |
+| `dup_email_footer` | string | Footer, centered in the HTML email. Optional default. |
 | `profile_hover` | string | Tooltip on logged-in avatar (placeholders use the signed-in session user) |
 | `acct_confirm_success_header` | string | Heading after email confirmation (placeholders use the new session after handoff sign-in) |
 | `acct_confirm_success_message1` | string | Body copy on confirmation success page |

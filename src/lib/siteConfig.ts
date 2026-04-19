@@ -2,20 +2,31 @@ import { getCurrentEnvironment } from "@/lib/appEnvironment";
 import { Environment } from "@/lib/constants";
 import { parseConfigButton } from "@/lib/configButton";
 
-const REQUIRED_KEYS = [
+/**
+ * Auth-related copy with server defaults if omitted or empty in the Config Sheet.
+ * Keeps `signin_welcome` / `signup_welcome` loading even when these rows are not added yet.
+ */
+const AUTH_MESSAGE_DEFAULTS = {
+  password_reset_message:
+    "If an account exists, password reset instructions were sent.",
+  sign_up_confirm: "Check your email to confirm your account.",
+  dup_email_subject: "Account request",
+  dup_email_header: "We received a request",
+  dup_email_greeting: "Hello,",
+  dup_email_message1:
+    "Someone tried to create an account using this email address. If this was you, you may already have an account—try signing in or use Forgot password.",
+  dup_email_message2: "If you did not request this, you can ignore this message.",
+  dup_email_footer: "Do not reply to this message.",
+} as const;
+
+type AuthMessageKey = keyof typeof AUTH_MESSAGE_DEFAULTS;
+
+const CORE_REQUIRED_KEYS = [
   "site_name",
   "site_subtitle",
   "site_logo",
   "signin_welcome",
   "signup_welcome",
-  "password_reset_message",
-  "sign_up_confirm",
-  "dup_email_subject",
-  "dup_email_header",
-  "dup_email_greeting",
-  "dup_email_message1",
-  "dup_email_message2",
-  "dup_email_footer",
   "profile_hover",
   "acct_confirm_success_header",
   "acct_confirm_success_message1",
@@ -27,7 +38,9 @@ const REQUIRED_KEYS = [
   "welcome_greeting_logged_out",
 ] as const;
 
-export type SiteConfigKey = (typeof REQUIRED_KEYS)[number];
+export type SiteConfigKey =
+  | (typeof CORE_REQUIRED_KEYS)[number]
+  | AuthMessageKey;
 
 export type SiteConfig = Record<SiteConfigKey, string>;
 
@@ -180,7 +193,7 @@ function validateValue(key: SiteConfigKey, val: string): SiteConfigFailure | nul
 
 function buildConfig(map: Map<string, string>): SiteConfig | SiteConfigFailure {
   const out = {} as Partial<SiteConfig>;
-  for (const key of REQUIRED_KEYS) {
+  for (const key of CORE_REQUIRED_KEYS) {
     if (!map.has(key)) {
       return { kind: "config_error", reason: "missing", key };
     }
@@ -191,6 +204,11 @@ function buildConfig(map: Map<string, string>): SiteConfig | SiteConfigFailure {
     const err = validateValue(key, val);
     if (err) return err;
     out[key] = val;
+  }
+  for (const key of Object.keys(AUTH_MESSAGE_DEFAULTS) as AuthMessageKey[]) {
+    const raw = map.get(key)?.trim();
+    out[key] =
+      raw && raw.length > 0 ? raw : AUTH_MESSAGE_DEFAULTS[key];
   }
   return out as SiteConfig;
 }
