@@ -10,11 +10,17 @@ export async function HomePageView() {
   if (isSiteConfigError(cfg)) {
     return null;
   }
+
+  const authed = Boolean(session?.user);
   const name =
     session?.user?.name?.trim() ||
     session?.user?.email?.split("@")[0]?.trim() ||
     "there";
-  const greeting = cfg.welcome_greeting.replace(/\{name\}/g, name);
+
+  const raw = authed
+    ? cfg.welcome_greeting_logged_in
+    : cfg.welcome_greeting_logged_out;
+  const greeting = raw.replace(/\{name\}/g, name);
 
   return (
     <div className="text-2xl font-semibold text-neutral-900 whitespace-pre-line">

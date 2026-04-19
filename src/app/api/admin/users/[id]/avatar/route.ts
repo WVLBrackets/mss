@@ -1,21 +1,30 @@
 import { put } from "@vercel/blob";
 import { getAuthSession } from "@/lib/auth";
+import { isSessionAdmin } from "@/lib/adminAuth";
 import { getCurrentEnvironment } from "@/lib/appEnvironment";
-import { updateProfile } from "@/lib/repositories/userRepository";
+import { getUserById, updateProfile } from "@/lib/repositories/userRepository";
 import { csrfProtection } from "@/lib/csrf";
 import { successResponse, ApiErrors } from "@/lib/api/responses";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
-export async function POST(request: Request) {
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+export async function POST(request: Request, { params }: RouteParams) {
   try {
     const csrf = csrfProtection(request);
     if (csrf) return csrf;
 
     const session = await getAuthSession();
-    const userId = session?.user?.id;
-    if (!userId) return ApiErrors.unauthorized();
+    if (!(await isSessionAdmin(session))) return ApiErrors.forbidden();
+
+    const { id: targetUserId } = await params;
+    const env = getCurrentEnvironment();
+    const target = await getUserById(targetUserId, env);
+    if (!target) return ApiErrors.notFound("User");
 
     const token = process.env["BLOB_READ_WRITE_TOKEN"];
     if (!token) {
@@ -36,17 +45,20 @@ export async function POST(request: Request) {
     }
 
     const ext = type.split("/")[1] ?? "bin";
-    const pathname = `avatars/${userId}-${Date.now()}.${ext}`;
+    const pathname = `avatars/admin-${targetUserId}-${Date.now()}.${ext}`;
     const blob = await put(pathname, file, {
       access: "public",
       token,
     });
 
-    const env = getCurrentEnvironment();
-    await updateProfile({ userId, environment: env, avatarUrl: blob.url });
+    await updateProfile({
+      userId: targetUserId,
+      environment: env,
+      avatarUrl: blob.url,
+    });
     return successResponse({ url: blob.url });
   } catch (e) {
-    console.error("[user/avatar]", e);
+    console.error("[admin/users/avatar POST]", e);
     return ApiErrors.serverError();
   }
 }

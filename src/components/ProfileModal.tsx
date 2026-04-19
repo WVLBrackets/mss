@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { LogOut, X } from "lucide-react";
 import { fetchWithCsrf } from "@/lib/fetchWithCsrf";
-import type { SiteConfig } from "@/lib/siteConfig";
 
 type ProfilePayload = {
   email: string;
@@ -12,6 +11,7 @@ type ProfilePayload = {
   display_name: string;
   initials: string;
   avatar_url: string | null;
+  avatar_upload_available?: boolean;
 };
 
 type Snapshot = {
@@ -24,14 +24,13 @@ type Snapshot = {
 interface Props {
   open: boolean;
   onClose: () => void;
-  siteConfig: SiteConfig;
   onUpdated: () => void;
 }
 
 /**
  * Profile editor: full/display name, initials, avatar upload; save/cancel, logout, unsaved guards.
  */
-export function ProfileModal({ open, onClose, siteConfig, onUpdated }: Props) {
+export function ProfileModal({ open, onClose, onUpdated }: Props) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +42,7 @@ export function ProfileModal({ open, onClose, siteConfig, onUpdated }: Props) {
   const [serverAvatarUrl, setServerAvatarUrl] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
+  const [uploadAvailable, setUploadAvailable] = useState(true);
 
   const snapshot = useRef<Snapshot | null>(null);
   const [pendingExit, setPendingExit] = useState<null | "close" | "logout">(null);
@@ -79,6 +79,7 @@ export function ProfileModal({ open, onClose, siteConfig, onUpdated }: Props) {
       setDisplayName(d.display_name);
       setInitials(d.initials);
       setServerAvatarUrl(d.avatar_url);
+      setUploadAvailable(d.avatar_upload_available !== false);
       snapshot.current = {
         name: d.name,
         displayName: d.display_name,
@@ -104,6 +105,23 @@ export function ProfileModal({ open, onClose, siteConfig, onUpdated }: Props) {
       displayName.trim() !== snapshot.current.displayName ||
       initials.trim().toUpperCase() !== snapshot.current.initials.toUpperCase() ||
       pendingFile !== null);
+
+  function onPickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!uploadAvailable) {
+      setError(
+        "Image upload is not enabled on the server. Add BLOB_READ_WRITE_TOKEN in Vercel (Preview + Production) for this project.",
+      );
+      e.target.value = "";
+      return;
+    }
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
+    const url = URL.createObjectURL(file);
+    setPendingPreviewUrl(url);
+    setPendingFile(file);
+  }
 
   async function postAvatar(file: File): Promise<string | null> {
     const fd = new FormData();
@@ -133,6 +151,12 @@ export function ProfileModal({ open, onClose, siteConfig, onUpdated }: Props) {
     try {
       let nextAvatarUrl = serverAvatarUrl;
       if (pendingFile) {
+        if (!uploadAvailable) {
+          setError(
+            "Cannot save image: BLOB_READ_WRITE_TOKEN is not set for this deployment.",
+          );
+          return false;
+        }
         const uploaded = await postAvatar(pendingFile);
         if (!uploaded) return false;
         nextAvatarUrl = uploaded;
@@ -171,16 +195,6 @@ export function ProfileModal({ open, onClose, siteConfig, onUpdated }: Props) {
     } finally {
       setSaving(false);
     }
-  }
-
-  function onPickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
-    const url = URL.createObjectURL(file);
-    setPendingPreviewUrl(url);
-    setPendingFile(file);
   }
 
   function handleCloseAttempt() {
@@ -371,14 +385,18 @@ export function ProfileModal({ open, onClose, siteConfig, onUpdated }: Props) {
                     />
                     <button
                       type="button"
-                      className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+                      className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={saving}
+                      disabled={saving || !uploadAvailable}
                       data-testid="profile-upload-image"
                     >
                       Upload image
                     </button>
-                    <p className="mt-1 text-xs text-neutral-500">Applied when you click Save.</p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {uploadAvailable
+                        ? "Applied when you click Save."
+                        : "Uploads require BLOB_READ_WRITE_TOKEN in Vercel for this environment."}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -420,7 +438,6 @@ export function ProfileModal({ open, onClose, siteConfig, onUpdated }: Props) {
               Logout
             </button>
           </div>
-          <p className="mt-3 text-center text-xs text-neutral-400">{siteConfig.profile_hover}</p>
         </div>
       </div>
     </div>

@@ -110,7 +110,6 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
       <ProfileModal
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
-        siteConfig={siteConfig}
         onUpdated={() => void update()}
       />
     </div>

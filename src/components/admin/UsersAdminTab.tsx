@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchWithCsrf } from "@/lib/fetchWithCsrf";
 
 interface Row {
   id: string;
   email: string;
   name: string;
+  display_name: string;
+  initials: string;
+  avatarUrl: string | null;
   role: string;
   emailConfirmed: boolean;
   createdAt: string;
@@ -162,7 +165,7 @@ export function UsersAdminTab() {
         <table className="min-w-full text-left text-sm">
           <thead className="bg-neutral-50 text-neutral-600">
             <tr>
-              <th className="p-2 w-8" />
+              <th className="w-8 p-2" />
               <th className="p-2">User</th>
               <th className="p-2">Role</th>
               <th className="p-2">Created</th>
@@ -189,8 +192,16 @@ export function UsersAdminTab() {
                     />
                   </td>
                   <td className="p-2">
-                    <div className="font-medium">{r.name}</div>
-                    <div className="text-neutral-500">{r.email}</div>
+                    <div className="flex items-center gap-2">
+                      <UserAvatarThumb row={r} />
+                      <div>
+                        <div className="font-medium">{r.name}</div>
+                        <div className="text-xs text-neutral-500">
+                          Display: {r.display_name} · {r.initials}
+                        </div>
+                        <div className="text-neutral-500">{r.email}</div>
+                      </div>
+                    </div>
                   </td>
                   <td className="p-2">{r.role}</td>
                   <td className="p-2 text-neutral-600">
@@ -199,11 +210,11 @@ export function UsersAdminTab() {
                   <td className="p-2 text-neutral-600">
                     {r.lastLogin ? new Date(r.lastLogin).toLocaleString() : "Never"}
                   </td>
-                  <td className="p-2 space-x-1">
+                  <td className="space-x-1 p-2">
                     {!r.emailConfirmed ? (
                       <button
                         type="button"
-                        className="text-blue-600 text-xs underline"
+                        className="text-xs text-blue-600 underline"
                         onClick={() => void confirmUser(r.id)}
                         data-testid={`admin-user-confirm-${r.id}`}
                       >
@@ -212,7 +223,7 @@ export function UsersAdminTab() {
                     ) : null}
                     <button
                       type="button"
-                      className="text-blue-600 text-xs underline"
+                      className="text-xs text-blue-600 underline"
                       onClick={() => setEditing(r)}
                       data-testid={`admin-user-edit-${r.id}`}
                     >
@@ -220,7 +231,7 @@ export function UsersAdminTab() {
                     </button>
                     <button
                       type="button"
-                      className="text-blue-600 text-xs underline"
+                      className="text-xs text-blue-600 underline"
                       onClick={() => setPwdUser(r)}
                       data-testid={`admin-user-password-${r.id}`}
                     >
@@ -228,7 +239,7 @@ export function UsersAdminTab() {
                     </button>
                     <button
                       type="button"
-                      className="text-red-600 text-xs underline"
+                      className="text-xs text-red-600 underline"
                       onClick={() => void deleteOne(r.id)}
                       data-testid={`admin-user-delete-${r.id}`}
                     >
@@ -266,6 +277,25 @@ export function UsersAdminTab() {
   );
 }
 
+function UserAvatarThumb({ row }: { row: Row }) {
+  const initials = row.initials?.slice(0, 3).toUpperCase() || "?";
+  if (row.avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={row.avatarUrl}
+        alt=""
+        className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-neutral-200"
+      />
+    );
+  }
+  return (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-neutral-500 to-neutral-800 text-xs font-semibold text-white ring-1 ring-neutral-200">
+      {initials}
+    </div>
+  );
+}
+
 function EditUserDialog({
   row,
   onClose,
@@ -275,18 +305,51 @@ function EditUserDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [name, setName] = useState(row.name);
-  const [email, setEmail] = useState(row.email);
+  const [fullName, setFullName] = useState(row.name);
+  const [displayName, setDisplayName] = useState(row.display_name);
+  const [initials, setInitials] = useState(row.initials);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(row.avatarUrl);
   const [isAdmin, setIsAdmin] = useState(row.role === "Admin");
   const [busy, setBusy] = useState(false);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function uploadAvatar(file: File) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetchWithCsrf(`/api/admin/users/${row.id}/avatar`, {
+      method: "POST",
+      body: fd,
+    });
+    const j = await res.json();
+    if (!res.ok) {
+      alert(j.error ?? "Avatar upload failed");
+      return;
+    }
+    const url = j?.data?.url as string | undefined;
+    if (url) setAvatarUrl(url);
+  }
 
   async function save() {
     setBusy(true);
     try {
+      if (pendingFile) {
+        await uploadAvatar(pendingFile);
+        if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+        setPendingPreview(null);
+        setPendingFile(null);
+      }
       const res = await fetchWithCsrf(`/api/admin/users/${row.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, isAdmin }),
+        body: JSON.stringify({
+          name: fullName.trim(),
+          display_name: displayName.trim(),
+          initials: initials.trim().toUpperCase().slice(0, 3),
+          avatar_url: avatarUrl,
+          isAdmin,
+        }),
       });
       if (!res.ok) {
         const j = await res.json();
@@ -299,31 +362,123 @@ function EditUserDialog({
     }
   }
 
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+    setPendingPreview(URL.createObjectURL(file));
+    setPendingFile(file);
+  }
+
+  async function clearAvatar() {
+    if (!confirm("Remove avatar image for this user?")) return;
+    setAvatarUrl(null);
+    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
+    setPendingPreview(null);
+    setPendingFile(null);
+    const res = await fetchWithCsrf(`/api/admin/users/${row.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ avatar_url: null }),
+    });
+    const j = await res.json();
+    if (!res.ok) {
+      alert(j.error ?? "Could not clear avatar");
+      return;
+    }
+    onSaved();
+  }
+
+  const showImg = Boolean(pendingPreview || avatarUrl);
+  const imgSrc = pendingPreview ?? avatarUrl ?? "";
+  const initialsDisplay = initials.trim().toUpperCase().slice(0, 3) || "?";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow">
         <h3 className="font-semibold">Edit user</h3>
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-3">
           <label className="block text-sm">
-            Name
+            Full name
             <input
               className="mt-1 w-full rounded border px-2 py-1"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </label>
+          <label className="block text-sm">
+            Display name
+            <input
+              className="mt-1 w-full rounded border px-2 py-1"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </label>
+          <label className="block text-sm">
+            Initials (1–3)
+            <input
+              className="mt-1 w-full rounded border px-2 py-1 uppercase"
+              value={initials}
+              maxLength={3}
+              onChange={(e) =>
+                setInitials(
+                  e.target.value
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9]/g, "")
+                    .slice(0, 3),
+                )
+              }
             />
           </label>
           <label className="block text-sm">
             Email
             <input
-              className="mt-1 w-full rounded border px-2 py-1"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 w-full cursor-not-allowed rounded border bg-neutral-100 px-2 py-1 text-neutral-600"
+              readOnly
+              value={row.email}
             />
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} />
             Admin
           </label>
+
+          <div>
+            <span className="text-sm font-medium">Avatar</span>
+            <div className="mt-2 flex items-center gap-3">
+              {showImg ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imgSrc}
+                  alt=""
+                  className="h-16 w-16 rounded-full object-cover ring-1 ring-neutral-200"
+                />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-neutral-500 to-neutral-800 text-sm font-semibold text-white ring-1 ring-neutral-200">
+                  {initialsDisplay}
+                </div>
+              )}
+              <div className="flex flex-col gap-1">
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+                <button
+                  type="button"
+                  className="rounded border px-2 py-1 text-xs"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  Upload image
+                </button>
+                {avatarUrl ? (
+                  <button type="button" className="text-xs text-red-600 underline" onClick={() => void clearAvatar()}>
+                    Remove image
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-neutral-500">
+              Requires BLOB_READ_WRITE_TOKEN on the server. Click Save after choosing a file.
+            </p>
+          </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" className="rounded border px-3 py-1" onClick={onClose}>

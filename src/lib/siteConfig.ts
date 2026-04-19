@@ -15,7 +15,8 @@ const REQUIRED_KEYS = [
   "acct_confirm_success_button2",
   "footer_text",
   "email_contact_address",
-  "welcome_greeting",
+  "welcome_greeting_logged_in",
+  "welcome_greeting_logged_out",
 ] as const;
 
 export type SiteConfigKey = (typeof REQUIRED_KEYS)[number];

@@ -271,7 +271,8 @@ Use this if a connection string was **posted somewhere unsafe** (chat, ticket, s
    | `acct_confirm_success_button2` | `X` to hide, or e.g. `Profile|/profile` |
    | `footer_text` | e.g. `© 2026 My App \| All rights reserved` |
    | `email_contact_address` | Support or app inbox (valid email) |
-   | `welcome_greeting` | e.g. `Welcome, {name}!` — `{name}` is replaced on the home page |
+   | `welcome_greeting_logged_in` | e.g. `Welcome back, {name}!` — `{name}` = display name when signed in |
+   | `welcome_greeting_logged_out` | e.g. `Welcome! Please sign in.` — `{name}` is still substituted (e.g. “there”) |
 
 5. **Make the sheet readable without logging in**  
    Click **Share** (top right). Under **General access**, set **Anyone with the link** to **Viewer** (wording may vary slightly). This allows MSS on Vercel to fetch the CSV without a Google login. Do **not** use the Config Sheet for secrets.

@@ -180,7 +180,8 @@ Every row exists on **both** `PROD` and `STAGE` tabs unless noted. **All listed 
 | `acct_confirm_success_button2` | string | Same format as button1, or `X` to hide second button |
 | `footer_text` | string | Left column of global footer (e.g. copyright line) |
 | `email_contact_address` | email string | `mailto` target for footer “Contact Us” |
-| `welcome_greeting` | string | Home greeting; `{name}` replaced with signed-in user’s name (or a short fallback if anonymous) |
+| `welcome_greeting_logged_in` | string | Home greeting when signed in; `{name}` replaced with display name (fallback from email) |
+| `welcome_greeting_logged_out` | string | Home greeting when not signed in; `{name}` still replaced with a generic fallback (e.g. “there”) for one template |
 
 **Optional extension keys** beyond this list are template-specific; the base shell’s loader treats the above as **required** when strict mode is on.
 

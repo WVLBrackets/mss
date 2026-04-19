@@ -214,14 +214,33 @@ export async function updateUserAdminFields(input: {
   userId: string;
   environment: string;
   name?: string;
+  displayName?: string;
+  initials?: string;
+  avatarUrl?: string | null;
   email?: string;
   isAdmin?: boolean;
 }): Promise<void> {
   if (input.name !== undefined) {
-    const displayName = defaultDisplayName(input.name);
-    const ini = defaultInitialsFromDisplay(displayName).slice(0, 3);
     await sql`
-      UPDATE users SET name = ${input.name}, display_name = ${displayName}, initials = ${ini}
+      UPDATE users SET name = ${input.name}
+      WHERE id = ${input.userId} AND environment = ${input.environment}
+    `;
+  }
+  if (input.displayName !== undefined) {
+    await sql`
+      UPDATE users SET display_name = ${input.displayName}
+      WHERE id = ${input.userId} AND environment = ${input.environment}
+    `;
+  }
+  if (input.initials !== undefined) {
+    await sql`
+      UPDATE users SET initials = ${input.initials.slice(0, 3)}
+      WHERE id = ${input.userId} AND environment = ${input.environment}
+    `;
+  }
+  if (input.avatarUrl !== undefined) {
+    await sql`
+      UPDATE users SET avatar_url = ${input.avatarUrl}
       WHERE id = ${input.userId} AND environment = ${input.environment}
     `;
   }

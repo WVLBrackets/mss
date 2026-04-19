@@ -24,6 +24,8 @@ export async function GET(request: Request) {
         const role = u.is_admin || isBootstrapAdminEmail(u.email) ? "admin" : "user";
         const hay = [
           u.name,
+          u.display_name,
+          u.initials,
           u.email,
           role,
           u.created_at?.toString?.() ?? "",
@@ -40,6 +42,8 @@ export async function GET(request: Request) {
       id: u.id,
       email: u.email,
       name: u.name,
+      display_name: u.display_name,
+      initials: u.initials,
       role: u.is_admin || isBootstrapAdminEmail(u.email) ? "Admin" : "User",
       emailConfirmed: u.email_confirmed,
       createdAt: u.created_at,
