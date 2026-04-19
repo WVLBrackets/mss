@@ -5,6 +5,7 @@ import { getCurrentEnvironment } from "@/lib/appEnvironment";
 import { BOOTSTRAP_ADMIN_EMAIL } from "@/lib/constants";
 import {
   getUserByEmail,
+  getUserById,
   getUserByHandoffToken,
   clearHandoffToken,
   updateLastLogin,
@@ -36,8 +37,9 @@ export const authOptions: NextAuthOptions = {
           return {
             id: user.id,
             email: user.email,
-            name: user.name,
+            name: user.display_name,
             image: user.avatar_url ?? undefined,
+            initials: user.initials,
           };
         }
 
@@ -55,8 +57,9 @@ export const authOptions: NextAuthOptions = {
           return {
             id: user.id,
             email: user.email,
-            name: user.name,
+            name: user.display_name,
             image: user.avatar_url ?? undefined,
+            initials: user.initials,
           };
         }
 
@@ -76,16 +79,33 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
+          name: user.display_name,
           image: user.avatar_url ?? undefined,
+          initials: user.initials,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
+        token.name = user.name;
+        token.picture = user.image;
+        const u = user as { initials?: string };
+        token.initials =
+          typeof u.initials === "string" && u.initials
+            ? u.initials.slice(0, 3)
+            : (user.name?.slice(0, 1).toUpperCase() ?? "?");
+      }
+      if (trigger === "update" && token.id) {
+        const env = getCurrentEnvironment();
+        const row = await getUserById(String(token.id), env);
+        if (row) {
+          token.name = row.display_name;
+          token.picture = row.avatar_url ?? undefined;
+          token.initials = row.initials.slice(0, 3);
+        }
       }
       return token;
     },
@@ -93,6 +113,10 @@ export const authOptions: NextAuthOptions = {
       if (session.user?.email) {
         session.user.id = (token.id as string) ?? "";
         session.user.isAdmin = await isUserAdmin(session.user.email);
+        session.user.initials =
+          typeof token.initials === "string" && token.initials
+            ? token.initials.slice(0, 3)
+            : session.user.name?.slice(0, 3).toUpperCase() ?? "?";
       }
       return session;
     },

@@ -1,5 +1,5 @@
 import { HomePageView } from "@/components/HomePageView";
 
-export default function HomePage() {
+export default function HomeAliasPage() {
   return <HomePageView />;
 }

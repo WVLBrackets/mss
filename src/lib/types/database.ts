@@ -2,6 +2,8 @@ export interface UserRow {
   id: string;
   email: string;
   name: string;
+  display_name: string;
+  initials: string;
   password_hash: string;
   email_confirmed: boolean;
   confirmation_token: string | null;

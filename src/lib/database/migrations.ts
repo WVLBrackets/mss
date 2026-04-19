@@ -54,6 +54,45 @@ export async function initializeDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_users_handoff_token ON users (handoff_token)
       WHERE handoff_token IS NOT NULL;
   `;
+
+  await sql`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS display_name TEXT;
+  `;
+  await sql`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS initials TEXT;
+  `;
+
+  await sql`
+    UPDATE users
+    SET display_name = NULLIF(trim(split_part(trim(name), ' ', 1)), '')
+    WHERE display_name IS NULL OR trim(display_name) = '';
+  `;
+  await sql`
+    UPDATE users
+    SET display_name = trim(split_part(trim(email), '@', 1))
+    WHERE display_name IS NULL OR trim(display_name) = '';
+  `;
+  await sql`
+    UPDATE users
+    SET initials = upper(substr(trim(display_name), 1, 3))
+    WHERE initials IS NULL OR trim(initials) = '';
+  `;
+  await sql`
+    UPDATE users SET display_name = 'User' WHERE display_name IS NULL;
+  `;
+  await sql`
+    UPDATE users SET initials = '?' WHERE initials IS NULL;
+  `;
+  await sql`
+    ALTER TABLE users
+      ALTER COLUMN display_name SET NOT NULL;
+  `;
+  await sql`
+    ALTER TABLE users
+      ALTER COLUMN initials SET NOT NULL;
+  `;
 }
 
 /**
@@ -68,8 +107,19 @@ export async function ensureBootstrapDevUser(): Promise<void> {
   const placeholderHash = await bcrypt.hash("dev-bypass-no-login", PasswordRequirements.BCRYPT_ROUNDS);
 
   await sql`
-    INSERT INTO users (email, name, password_hash, email_confirmed, is_admin, environment)
-    VALUES (${email}, ${"Local Dev"}, ${placeholderHash}, TRUE, TRUE, ${environment})
+    INSERT INTO users (
+      email, name, display_name, initials, password_hash, email_confirmed, is_admin, environment
+    )
+    VALUES (
+      ${email},
+      ${"Local Dev"},
+      ${"Local"},
+      ${"L"},
+      ${placeholderHash},
+      TRUE,
+      TRUE,
+      ${environment}
+    )
     ON CONFLICT (email, environment) DO UPDATE SET
       email_confirmed = TRUE,
       is_admin = TRUE;

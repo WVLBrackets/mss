@@ -32,7 +32,7 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
       <EnvironmentBanner kind={bannerKind} />
       <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link href="/" className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 cursor-default items-center gap-3 select-none">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={publicAssetUrl(siteConfig.site_logo)}
@@ -47,7 +47,7 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
                 {siteConfig.site_subtitle}
               </div>
             </div>
-          </Link>
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             {!isAuthed ? (
               <Link
@@ -61,7 +61,7 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
             ) : (
               <button
                 type="button"
-                className="rounded-full focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                className="cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-neutral-400"
                 title={siteConfig.profile_hover}
                 onClick={() => setProfileOpen(true)}
                 data-testid="profile-avatar-button"
@@ -74,9 +74,13 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
                     className="h-9 w-9 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-200 text-sm font-medium">
-                    {(session?.user?.name ?? session?.user?.email ?? "?")
-                      .slice(0, 1)
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-neutral-500 to-neutral-800 text-sm font-semibold text-white">
+                    {(session?.user?.initials?.slice(0, 3) ??
+                      session?.user?.name ??
+                      session?.user?.email ??
+                      "?")
+                      .toString()
+                      .slice(0, 3)
                       .toUpperCase()}
                   </div>
                 )}
@@ -85,7 +89,12 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
           </div>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 border-t border-neutral-100 px-2">
-          <NavItem href="/" icon={<Home className="h-4 w-4" />} label="Home" active={pathname === "/"} />
+          <NavItem
+            href="/home"
+            icon={<Home className="h-4 w-4" />}
+            label="Home"
+            active={pathname === "/" || pathname === "/home"}
+          />
           {isAdmin ? (
             <NavItem
               href="/admin"
@@ -102,9 +111,6 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
         siteConfig={siteConfig}
-        userName={session?.user?.name ?? ""}
-        userEmail={session?.user?.email ?? ""}
-        avatarUrl={session?.user?.image ?? null}
         onUpdated={() => void update()}
       />
     </div>

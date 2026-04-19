@@ -1,11 +1,25 @@
 import { sql } from "@/lib/databaseAdapter";
 import type { UserRow } from "@/lib/types/database";
+import { defaultDisplayName, defaultInitialsFromDisplay } from "@/lib/profileDefaults";
 
 function mapUser(row: Record<string, unknown>): UserRow {
+  const name = String(row.name);
+  const displayNameRaw = row.display_name as string | null | undefined;
+  const initialsRaw = row.initials as string | null | undefined;
+  const display_name =
+    displayNameRaw != null && String(displayNameRaw).trim() !== ""
+      ? String(displayNameRaw)
+      : defaultDisplayName(name);
+  const initials =
+    initialsRaw != null && String(initialsRaw).trim() !== ""
+      ? String(initialsRaw).slice(0, 3)
+      : defaultInitialsFromDisplay(display_name).slice(0, 3);
   return {
     id: String(row.id),
     email: String(row.email),
-    name: String(row.name),
+    name,
+    display_name,
+    initials,
     password_hash: String(row.password_hash),
     email_confirmed: Boolean(row.email_confirmed),
     confirmation_token: row.confirmation_token as string | null,
@@ -54,13 +68,17 @@ export async function createUser(input: {
   confirmationToken: string | null;
   confirmationExpires: Date | null;
 }): Promise<UserRow> {
+  const displayName = defaultDisplayName(input.name);
+  const initials = defaultInitialsFromDisplay(displayName).slice(0, 3);
   const rows = await sql`
     INSERT INTO users (
-      email, name, password_hash, environment,
+      email, name, display_name, initials, password_hash, environment,
       confirmation_token, confirmation_token_expires
     ) VALUES (
       lower(${input.email}),
       ${input.name},
+      ${displayName},
+      ${initials},
       ${input.passwordHash},
       ${input.environment},
       ${input.confirmationToken},
@@ -147,11 +165,25 @@ export async function updateProfile(input: {
   userId: string;
   environment: string;
   name?: string;
+  displayName?: string;
+  initials?: string;
   avatarUrl?: string | null;
 }): Promise<void> {
   if (input.name !== undefined) {
     await sql`
       UPDATE users SET name = ${input.name}
+      WHERE id = ${input.userId} AND environment = ${input.environment}
+    `;
+  }
+  if (input.displayName !== undefined) {
+    await sql`
+      UPDATE users SET display_name = ${input.displayName}
+      WHERE id = ${input.userId} AND environment = ${input.environment}
+    `;
+  }
+  if (input.initials !== undefined) {
+    await sql`
+      UPDATE users SET initials = ${input.initials}
       WHERE id = ${input.userId} AND environment = ${input.environment}
     `;
   }
@@ -186,8 +218,12 @@ export async function updateUserAdminFields(input: {
   isAdmin?: boolean;
 }): Promise<void> {
   if (input.name !== undefined) {
-    await sql`UPDATE users SET name = ${input.name}
-      WHERE id = ${input.userId} AND environment = ${input.environment}`;
+    const displayName = defaultDisplayName(input.name);
+    const ini = defaultInitialsFromDisplay(displayName).slice(0, 3);
+    await sql`
+      UPDATE users SET name = ${input.name}, display_name = ${displayName}, initials = ${ini}
+      WHERE id = ${input.userId} AND environment = ${input.environment}
+    `;
   }
   if (input.email !== undefined) {
     await sql`UPDATE users SET email = lower(${input.email})
