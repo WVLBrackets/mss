@@ -8,6 +8,8 @@ declare module "next-auth" {
       initials?: string;
       /** DB `users.name` (full / legal name); `name` on session is display name. */
       fullName?: string;
+      /** When true, self-service profile editing is disabled. */
+      profileLocked?: boolean;
     };
   }
 
@@ -16,6 +18,7 @@ declare module "next-auth" {
     isAdmin?: boolean;
     initials?: string;
     fullName?: string;
+    profileLocked?: boolean;
   }
 }
 
@@ -24,5 +27,6 @@ declare module "next-auth/jwt" {
     id?: string;
     initials?: string;
     fullName?: string;
+    profileLocked?: boolean;
   }
 }

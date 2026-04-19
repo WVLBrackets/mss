@@ -13,6 +13,8 @@ export interface UserRow {
   handoff_token: string | null;
   handoff_token_expires: Date | null;
   is_admin: boolean;
+  /** When true, user cannot open profile editor or change avatar via self-service APIs. */
+  profile_locked: boolean;
   avatar_url: string | null;
   environment: string;
   created_at: Date;

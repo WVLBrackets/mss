@@ -98,6 +98,11 @@ export async function initializeDatabase(): Promise<void> {
     ALTER TABLE users
       ALTER COLUMN initials SET NOT NULL;
   `;
+
+  await sql`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS profile_locked BOOLEAN NOT NULL DEFAULT FALSE;
+  `;
 }
 
 /**

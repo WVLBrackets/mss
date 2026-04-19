@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { CheckCircle2, KeyRound, Pencil, Trash2 } from "lucide-react";
 import { fetchWithCsrf } from "@/lib/fetchWithCsrf";
 import { avatarSrcForImg } from "@/lib/blobAvatar";
@@ -16,11 +17,13 @@ interface Row {
   emailConfirmed: boolean;
   createdAt: string;
   lastLogin: string | null;
+  profileLocked: boolean;
 }
 
 const SEARCH_DEBOUNCE_MS = 350;
 
 export function UsersAdminTab() {
+  const { data: session, update: updateSession } = useSession();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
@@ -89,6 +92,23 @@ export function UsersAdminTab() {
       const j = await res.json();
       alert(j.error ?? "Bulk delete failed");
       return;
+    }
+    await load();
+  }
+
+  async function setProfileLockedForRow(row: Row, profileLocked: boolean) {
+    const res = await fetchWithCsrf(`/api/admin/users/${row.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_locked: profileLocked }),
+    });
+    if (!res.ok) {
+      const j = await res.json();
+      alert(j.error ?? "Could not update lock");
+      return;
+    }
+    if (session?.user?.id === row.id) {
+      await updateSession();
     }
     await load();
   }
@@ -179,13 +199,14 @@ export function UsersAdminTab() {
               <th className="p-2">Role</th>
               <th className="p-2">Created</th>
               <th className="p-2">Last login</th>
-              <th className="w-[1%] whitespace-nowrap p-2">Actions</th>
+              <th className="p-2 text-center">Lock profile</th>
+              <th className="min-w-[5.75rem] whitespace-nowrap p-2">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="p-4 text-neutral-500">
+                <td colSpan={7} className="p-4 text-neutral-500">
                   Loading…
                 </td>
               </tr>
@@ -219,10 +240,31 @@ export function UsersAdminTab() {
                   <td className="p-2 text-neutral-600">
                     {r.lastLogin ? new Date(r.lastLogin).toLocaleString() : "Never"}
                   </td>
-                  <td className="p-2 align-top">
+                  <td className="p-2 align-middle text-center">
+                    <input
+                      type="checkbox"
+                      checked={r.profileLocked}
+                      disabled={Boolean(
+                        session?.user?.id &&
+                          session.user.id === r.id &&
+                          !r.profileLocked,
+                      )}
+                      title={
+                        session?.user?.id === r.id && !r.profileLocked
+                          ? "You cannot lock your own account from here."
+                          : r.profileLocked
+                            ? "Allow this user to edit their profile again."
+                            : "Prevent this user from opening the profile editor."
+                      }
+                      aria-label={`Lock profile for ${r.email}`}
+                      onChange={(e) => void setProfileLockedForRow(r, e.target.checked)}
+                      data-testid={`admin-user-profile-lock-${r.id}`}
+                    />
+                  </td>
+                  <td className="min-w-[5.75rem] p-2 align-top">
                     {pendingDeleteId === r.id ? (
                       <div
-                        className="inline-grid w-[5.5rem] gap-1.5 rounded border border-red-200 bg-red-50 p-2 text-center"
+                        className="grid w-[5.75rem] shrink-0 grid-cols-2 gap-2 rounded border border-red-200 bg-red-50 p-2 text-center"
                         data-testid={`admin-user-delete-confirm-${r.id}`}
                       >
                         <span className="col-span-2 text-[11px] leading-tight text-red-900">
@@ -246,7 +288,7 @@ export function UsersAdminTab() {
                         </button>
                       </div>
                     ) : (
-                      <div className="inline-grid grid-cols-2 gap-1.5">
+                      <div className="isolate grid w-[5.75rem] shrink-0 grid-cols-2 gap-2">
                         <AdminActionIconButton
                           variant="edit"
                           label="Edit"
@@ -417,7 +459,10 @@ function EditUserDialog({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function uploadAvatar(file: File) {
+  /**
+   * Uploads avatar for this row via admin API (persists to DB). Returns whether upload succeeded.
+   */
+  async function uploadAvatar(file: File): Promise<boolean> {
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetchWithCsrf(`/api/admin/users/${row.id}/avatar`, {
@@ -427,17 +472,21 @@ function EditUserDialog({
     const j = await res.json();
     if (!res.ok) {
       alert(j.error ?? "Avatar upload failed");
-      return;
+      return false;
     }
     const url = j?.data?.url as string | undefined;
     if (url) setAvatarUrl(url);
+    return true;
   }
 
   async function save() {
     setBusy(true);
     try {
+      let uploadedNewAvatar = false;
       if (pendingFile) {
-        await uploadAvatar(pendingFile);
+        const ok = await uploadAvatar(pendingFile);
+        if (!ok) return;
+        uploadedNewAvatar = true;
         if (pendingPreview) URL.revokeObjectURL(pendingPreview);
         setPendingPreview(null);
         setPendingFile(null);
@@ -449,7 +498,8 @@ function EditUserDialog({
           name: fullName.trim(),
           display_name: displayName.trim(),
           initials: initials.trim().toUpperCase().slice(0, 3),
-          avatar_url: avatarUrl,
+          // Admin avatar POST already persists `avatar_url`; including stale state here overwrote it.
+          ...(uploadedNewAvatar ? {} : { avatar_url: avatarUrl }),
           isAdmin,
         }),
       });

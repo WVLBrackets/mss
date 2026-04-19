@@ -42,6 +42,7 @@ export const authOptions: NextAuthOptions = {
             fullName: user.name,
             image: sessionImageFromStoredAvatar(user.avatar_url),
             initials: user.initials,
+            profileLocked: user.profile_locked,
           };
         }
 
@@ -86,6 +87,7 @@ export const authOptions: NextAuthOptions = {
           fullName: user.name,
           image: sessionImageFromStoredAvatar(user.avatar_url),
           initials: user.initials,
+          profileLocked: user.profile_locked,
         };
       },
     }),
@@ -96,7 +98,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.name = user.name;
         token.picture = user.image;
-        const u = user as { initials?: string; fullName?: string };
+        const u = user as { initials?: string; fullName?: string; profileLocked?: boolean };
         token.fullName =
           typeof u.fullName === "string" && u.fullName.trim()
             ? u.fullName.trim()
@@ -105,6 +107,7 @@ export const authOptions: NextAuthOptions = {
           typeof u.initials === "string" && u.initials
             ? u.initials.slice(0, 3)
             : (user.name?.slice(0, 1).toUpperCase() ?? "?");
+        token.profileLocked = Boolean(u.profileLocked);
       }
       if (trigger === "update" && token.id) {
         const env = getCurrentEnvironment();
@@ -114,6 +117,7 @@ export const authOptions: NextAuthOptions = {
           token.fullName = row.name;
           token.picture = sessionImageFromStoredAvatar(row.avatar_url);
           token.initials = row.initials.slice(0, 3);
+          token.profileLocked = Boolean(row.profile_locked);
         }
       }
       return token;
@@ -132,6 +136,7 @@ export const authOptions: NextAuthOptions = {
             : "";
         session.user.image =
           typeof token.picture === "string" ? token.picture : undefined;
+        session.user.profileLocked = Boolean(token.profileLocked);
       }
       return session;
     },

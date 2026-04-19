@@ -29,6 +29,7 @@ function mapUser(row: Record<string, unknown>): UserRow {
     handoff_token: (row.handoff_token as string | null) ?? null,
     handoff_token_expires: (row.handoff_token_expires as Date | null) ?? null,
     is_admin: Boolean(row.is_admin),
+    profile_locked: Boolean(row.profile_locked),
     avatar_url: row.avatar_url as string | null,
     environment: String(row.environment),
     created_at: row.created_at as Date,
@@ -219,6 +220,7 @@ export async function updateUserAdminFields(input: {
   avatarUrl?: string | null;
   email?: string;
   isAdmin?: boolean;
+  profileLocked?: boolean;
 }): Promise<void> {
   if (input.name !== undefined) {
     await sql`
@@ -250,6 +252,10 @@ export async function updateUserAdminFields(input: {
   }
   if (input.isAdmin !== undefined) {
     await sql`UPDATE users SET is_admin = ${input.isAdmin}
+      WHERE id = ${input.userId} AND environment = ${input.environment}`;
+  }
+  if (input.profileLocked !== undefined) {
+    await sql`UPDATE users SET profile_locked = ${input.profileLocked}
       WHERE id = ${input.userId} AND environment = ${input.environment}`;
   }
 }

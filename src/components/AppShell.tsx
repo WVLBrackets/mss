@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Home, Shield, UserCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   placeholdersFromSessionUser,
   resolveUserPlaceholders,
@@ -30,6 +30,11 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
 
   const isAdmin = Boolean(session?.user?.isAdmin);
   const isAuthed = status === "authenticated";
+  const profileLocked = Boolean(session?.user?.profileLocked);
+
+  useEffect(() => {
+    if (profileLocked && profileOpen) setProfileOpen(false);
+  }, [profileLocked, profileOpen]);
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-neutral-900">
@@ -62,6 +67,33 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
                 <span>Profile</span>
                 <UserCircle className="h-6 w-6" aria-hidden />
               </Link>
+            ) : profileLocked ? (
+              <span
+                role="img"
+                aria-label="Profile (locked)"
+                className="cursor-not-allowed rounded-full opacity-60 focus:outline-none"
+                title="Your profile has been locked by an administrator."
+                data-testid="profile-avatar-button-locked"
+              >
+                {session?.user?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={session.user.image}
+                    alt=""
+                    className="h-9 w-9 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-neutral-500 to-neutral-800 text-sm font-semibold text-white">
+                    {(session?.user?.initials?.slice(0, 3) ??
+                      session?.user?.name ??
+                      session?.user?.email ??
+                      "?")
+                      .toString()
+                      .slice(0, 3)
+                      .toUpperCase()}
+                  </div>
+                )}
+              </span>
             ) : (
               <button
                 type="button"

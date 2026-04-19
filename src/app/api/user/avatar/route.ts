@@ -5,9 +5,9 @@ import {
   formatStoredAvatarFromPut,
   getBlobStoreAccess,
 } from "@/lib/blobAvatar";
-import { updateProfile } from "@/lib/repositories/userRepository";
+import { getUserById, updateProfile } from "@/lib/repositories/userRepository";
 import { csrfProtection } from "@/lib/csrf";
-import { successResponse, ApiErrors } from "@/lib/api/responses";
+import { successResponse, ApiErrors, errorResponse } from "@/lib/api/responses";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -20,6 +20,17 @@ export async function POST(request: Request) {
     const session = await getAuthSession();
     const userId = session?.user?.id;
     if (!userId) return ApiErrors.unauthorized();
+
+    const env = getCurrentEnvironment();
+    const row = await getUserById(userId, env);
+    if (!row) return ApiErrors.notFound("User");
+    if (row.profile_locked) {
+      return errorResponse(
+        "Your profile has been locked by an administrator.",
+        403,
+        "PROFILE_LOCKED",
+      );
+    }
 
     const token = process.env["BLOB_READ_WRITE_TOKEN"];
     if (!token) {
@@ -48,7 +59,6 @@ export async function POST(request: Request) {
     });
 
     const stored = formatStoredAvatarFromPut(access, blob);
-    const env = getCurrentEnvironment();
     await updateProfile({ userId, environment: env, avatarUrl: stored });
     return successResponse({ url: stored });
   } catch (e) {

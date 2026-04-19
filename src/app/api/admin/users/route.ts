@@ -31,6 +31,7 @@ export async function GET(request: Request) {
           u.created_at?.toString?.() ?? "",
           u.last_login?.toString?.() ?? "never",
           u.email_confirmed ? "confirmed" : "unconfirmed",
+          u.profile_locked ? "locked" : "",
         ]
           .join(" ")
           .toLowerCase();
@@ -49,6 +50,7 @@ export async function GET(request: Request) {
       createdAt: u.created_at,
       lastLogin: u.last_login,
       avatarUrl: u.avatar_url,
+      profileLocked: u.profile_locked,
     }));
 
     return successResponse(payload);

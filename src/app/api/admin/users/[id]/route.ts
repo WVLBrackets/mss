@@ -9,7 +9,7 @@ import {
 
 const INITIALS_RE = /^[A-Za-z0-9]{1,3}$/;
 import { csrfProtection } from "@/lib/csrf";
-import { successResponse, ApiErrors } from "@/lib/api/responses";
+import { successResponse, ApiErrors, errorResponse } from "@/lib/api/responses";
 import { isBootstrapAdminEmail } from "@/lib/adminAuth";
 
 interface RouteParams {
@@ -56,6 +56,22 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         return ApiErrors.validationError("Initials must be 1–3 letters or numbers");
       }
     }
+    if (body.profile_locked !== undefined && typeof body.profile_locked !== "boolean") {
+      return ApiErrors.validationError("profile_locked must be a boolean");
+    }
+
+    const adminUserId = session?.user?.id;
+    if (
+      body.profile_locked === true &&
+      adminUserId &&
+      String(adminUserId) === String(id)
+    ) {
+      return errorResponse(
+        "You cannot lock your own account from the admin UI.",
+        400,
+        "SELF_LOCK_FORBIDDEN",
+      );
+    }
 
     await updateUserAdminFields({
       userId: id,
@@ -75,6 +91,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
             : undefined,
       email: typeof body.email === "string" ? body.email.trim() : undefined,
       isAdmin: typeof body.isAdmin === "boolean" ? body.isAdmin : undefined,
+      profileLocked:
+        typeof body.profile_locked === "boolean" ? body.profile_locked : undefined,
     });
 
     return successResponse({ ok: true });

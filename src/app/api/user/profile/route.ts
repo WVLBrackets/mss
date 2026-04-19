@@ -4,6 +4,14 @@ import { getUserById, updateProfile } from "@/lib/repositories/userRepository";
 import { csrfProtection } from "@/lib/csrf";
 import { successResponse, errorResponse, ApiErrors } from "@/lib/api/responses";
 
+function profileLockedResponse() {
+  return errorResponse(
+    "Your profile has been locked by an administrator.",
+    403,
+    "PROFILE_LOCKED",
+  );
+}
+
 const INITIALS_RE = /^[A-Za-z0-9]{1,3}$/;
 
 export async function GET() {
@@ -26,6 +34,7 @@ export async function GET() {
       initials: user.initials,
       avatar_url: user.avatar_url,
       avatar_upload_available: blobConfigured,
+      profile_locked: user.profile_locked,
     });
   } catch (e) {
     console.error("[user/profile GET]", e);
@@ -44,6 +53,11 @@ export async function PATCH(request: Request) {
     if (!email || !userId) {
       return ApiErrors.unauthorized();
     }
+
+    const env = getCurrentEnvironment();
+    const row = await getUserById(userId, env);
+    if (!row) return ApiErrors.notFound("User");
+    if (row.profile_locked) return profileLockedResponse();
 
     const body = await request.json();
     const name = typeof body.name === "string" ? body.name.trim() : undefined;
@@ -75,7 +89,6 @@ export async function PATCH(request: Request) {
       return ApiErrors.validationError("No profile fields to update");
     }
 
-    const env = getCurrentEnvironment();
     await updateProfile({
       userId,
       environment: env,
