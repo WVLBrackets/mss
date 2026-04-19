@@ -12,10 +12,11 @@ const AUTH_MESSAGE_DEFAULTS = {
   sign_up_confirm: "Check your email to confirm your account.",
   dup_email_subject: "Account request",
   dup_email_header: "We received a request",
-  dup_email_greeting: "Hello,",
+  dup_email_greeting: "Hello, {Full Name}",
   dup_email_message1:
     "Someone tried to create an account using this email address. If this was you, you may already have an account—try signing in or use Forgot password.",
-  dup_email_message2: "If you did not request this, you can ignore this message.",
+  dup_email_message2:
+    "Password reset|{Tokenized password reset link}",
   dup_email_footer: "Do not reply to this message.",
 } as const;
 

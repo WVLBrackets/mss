@@ -1,3 +1,5 @@
+import type { UserRow } from "@/lib/types/database";
+
 /**
  * Values substituted for `{Full Name}`, `{Display Name}`, `{Initials}`, and `{email}` in Config Sheet strings.
  * Token matching is case-insensitive and allows optional spaces inside the braces.
@@ -10,7 +12,19 @@ export type UserPlaceholderValues = {
 };
 
 /**
- * Placeholders when only the recipient email is known (e.g. duplicate-registration notice).
+ * Placeholders from an existing account row (e.g. duplicate-registration email uses DB `name` / `display_name`).
+ */
+export function placeholdersFromUserRow(user: UserRow): UserPlaceholderValues {
+  return {
+    fullName: user.name.trim(),
+    displayName: user.display_name.trim(),
+    initials: user.initials.trim().slice(0, 3),
+    email: user.email.trim().toLowerCase(),
+  };
+}
+
+/**
+ * Placeholders when only the recipient email is known (e.g. legacy flows).
  * Uses the local-part of the address for name-like fields so `{email}` / `{Display Name}` resolve sensibly.
  */
 export function placeholdersFromEmailAddress(email: string): UserPlaceholderValues {

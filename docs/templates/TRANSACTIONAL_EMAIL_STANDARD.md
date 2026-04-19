@@ -45,7 +45,7 @@ All of the following share **`buildSixPartEmailHtml()`** in **`src/lib/sixPartTr
 5. **Message 2** — see below (plain paragraph **or** piped link).
 6. **Footer** — smaller type (**80%** of body), left-aligned with the rest of the body.
 
-Wrapper styles: **max-width ~560px**, **left-aligned** text (not centered in the pane), system-ui font stack, **escaped** interpolated strings via **`escapeHtml()`** (`src/lib/emailTemplate.ts`).
+Wrapper styles: **max-width 768px**, **left-aligned** text, **`text-wrap: pretty`** where supported, system-ui font stack, **escaped** interpolated strings via **`escapeHtml()`** (`src/lib/emailTemplate.ts`).
 
 ---
 
@@ -80,14 +80,15 @@ Link label|{Tokenized … link}
 - After the pipe, the sheet contains a **placeholder token** (spacing inside braces is flexible; matching is case-insensitive). Code substitutes the real URL when sending.
 - **Registration:** placeholder **`{Tokenized confirmation link}`** — implemented as `TOKENIZED_CONFIRMATION_LINK` in `sixPartTransactionalEmail.ts`.
 - **Password reset:** placeholder **`{Tokenized password reset link}`** — `TOKENIZED_PW_RESET_LINK`.
+- **Duplicate registration:** same **`{Tokenized password reset link}`** in `dup_email_message2`. The API issues a fresh reset token (same TTL as forgot-password) before sending so the link is valid.
 
 Builder: **`buildPipedLinkMessage2Html()`** (same module). If the row is malformed (no pipe or placeholder missing), the implementation falls back to safe escaped HTML and still includes a default link where appropriate.
 
-### B) Emails with no tokenized link (e.g. duplicate registration)
+### B) Plain `message2` (no link)
 
-`dup_email_message2` is **plain copy** only: rendered as a **single left-aligned paragraph** after placeholder resolution. Same outer six-part shell as A.
+If a future mail type needs **only** text in `message2`, render it as a single escaped paragraph in the same six-part shell (no piped builder).
 
-For duplicate mail, only the address may be known: use **`placeholdersFromEmailAddress()`** for `{email}` / name-like tokens.
+**Duplicate registration placeholders:** use **`placeholdersFromUserRow()`** with the existing `users` row so `{Full Name}`, `{Display Name}`, etc. match the account—not the email local-part.
 
 ---
 

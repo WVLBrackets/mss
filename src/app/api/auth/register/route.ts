@@ -3,7 +3,11 @@ import { getCurrentEnvironment } from "@/lib/appEnvironment";
 import { validateRegistration } from "@/lib/validation/validators";
 import { hashPassword } from "@/lib/services/authService";
 import { generateSecureToken } from "@/lib/services/tokenService";
-import { createUser, getUserByEmail } from "@/lib/repositories/userRepository";
+import {
+  createUser,
+  getUserByEmail,
+  setResetToken,
+} from "@/lib/repositories/userRepository";
 import { TokenExpiration } from "@/lib/constants";
 import {
   sendConfirmationEmail,
@@ -15,6 +19,7 @@ import {
   defaultDisplayName,
   defaultInitialsFromDisplay,
 } from "@/lib/profileDefaults";
+import { placeholdersFromUserRow } from "@/lib/configPlaceholders";
 
 export async function POST(request: Request) {
   try {
@@ -42,8 +47,18 @@ export async function POST(request: Request) {
     const env = getCurrentEnvironment();
     const existing = await getUserByEmail(body.email, env);
     if (existing) {
+      const resetToken = generateSecureToken();
+      const resetExpires = new Date(Date.now() + TokenExpiration.RESET_MS);
+      await setResetToken(body.email.trim(), env, resetToken, resetExpires);
+      const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+      const resetUrl = `${baseUrl.replace(/\/$/, "")}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
       try {
-        await sendDuplicateRegistrationEmail(body.email.trim(), cfg);
+        await sendDuplicateRegistrationEmail(
+          body.email.trim(),
+          cfg,
+          placeholdersFromUserRow(existing),
+          resetUrl,
+        );
       } catch (mailErr) {
         console.error("[register] duplicate email send failed", mailErr);
         return ApiErrors.serverError();

@@ -28,15 +28,15 @@ export function buildPipedLinkMessage2Html(
   const pipe = trimmed.indexOf("|");
   if (pipe === -1) {
     const href = escapeHtmlAttributeUrl(actionUrl);
-    return `<p style="margin:0;text-align:left">${escapeHtml(trimmed)}</p><p style="margin:0.75rem 0 0;text-align:left"><a href="${href}">${escapeHtml(fallbackLinkLabel)}</a></p>`;
+    return `<p style="margin:0;text-align:left;text-wrap:pretty">${escapeHtml(trimmed)}</p><p style="margin:0.75rem 0 0;text-align:left;text-wrap:pretty"><a href="${href}">${escapeHtml(fallbackLinkLabel)}</a></p>`;
   }
   const linkText = trimmed.slice(0, pipe).trim();
   const afterPipe = trimmed.slice(pipe + 1).trim();
   if (!placeholderPattern.test(afterPipe)) {
-    return `<p style="margin:0;text-align:left">${escapeHtml(trimmed)}</p>`;
+    return `<p style="margin:0;text-align:left;text-wrap:pretty">${escapeHtml(trimmed)}</p>`;
   }
   const href = escapeHtmlAttributeUrl(actionUrl);
-  return `<p style="margin:0;text-align:left"><a href="${href}">${escapeHtml(linkText)}</a></p>`;
+  return `<p style="margin:0;text-align:left;text-wrap:pretty"><a href="${href}">${escapeHtml(linkText)}</a></p>`;
 }
 
 export type SixPartEmailContent = {
@@ -54,15 +54,15 @@ export type SixPartEmailContent = {
 export function buildSixPartEmailHtml(parts: SixPartEmailContent): string {
   const { header, greetingResolved, message1, message2Html, footer } = parts;
   return `
-<div style="max-width:560px;margin:0;font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#111;text-align:left">
-  <h1 style="font-size:1.25rem;font-weight:600;margin:0;text-align:left">${escapeHtml(header)}</h1>
+<div style="max-width:768px;margin:0;font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#111;text-align:left;text-wrap:pretty">
+  <h1 style="font-size:1.25rem;font-weight:600;margin:0;text-align:left;text-wrap:pretty">${escapeHtml(header)}</h1>
   <br /><br />
-  <p style="margin:0;text-align:left">${escapeHtml(greetingResolved)}</p>
+  <p style="margin:0;text-align:left;text-wrap:pretty">${escapeHtml(greetingResolved)}</p>
   <br />
-  <p style="margin:0;text-align:left">${escapeHtml(message1)}</p>
+  <p style="margin:0;text-align:left;text-wrap:pretty">${escapeHtml(message1)}</p>
   <br />
   ${message2Html}
   <br /><br />
-  <div style="text-align:left;font-size:80%;">${escapeHtml(footer)}</div>
+  <div style="text-align:left;font-size:80%;text-wrap:pretty">${escapeHtml(footer)}</div>
 </div>`.trim();
 }

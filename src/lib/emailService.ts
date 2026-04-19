@@ -1,12 +1,8 @@
 import nodemailer from "nodemailer";
-import { escapeHtml } from "@/lib/emailTemplate";
 import { emailSubjectEnvironmentPrefix } from "@/lib/emailSubjectPrefix";
 import type { SiteConfig } from "@/lib/siteConfig";
 import type { UserPlaceholderValues } from "@/lib/configPlaceholders";
-import {
-  placeholdersFromEmailAddress,
-  resolveUserPlaceholders,
-} from "@/lib/configPlaceholders";
+import { resolveUserPlaceholders } from "@/lib/configPlaceholders";
 import {
   buildPipedLinkMessage2Html,
   buildSixPartEmailHtml,
@@ -141,15 +137,20 @@ export async function sendDuplicateRegistrationEmail(
     | "dup_email_message2"
     | "dup_email_footer"
   >,
+  placeholders: UserPlaceholderValues,
+  resetUrl: string,
 ): Promise<void> {
   const transport = getTransport();
-  const ph = placeholdersFromEmailAddress(to);
-  const greeting = resolveUserPlaceholders(cfg.dup_email_greeting, ph);
-  const header = resolveUserPlaceholders(cfg.dup_email_header, ph);
-  const message1 = resolveUserPlaceholders(cfg.dup_email_message1, ph);
-  const message2Resolved = resolveUserPlaceholders(cfg.dup_email_message2, ph);
-  const footer = resolveUserPlaceholders(cfg.dup_email_footer, ph);
-  const message2Html = `<p style="margin:0;text-align:left">${escapeHtml(message2Resolved)}</p>`;
+  const greeting = resolveUserPlaceholders(cfg.dup_email_greeting, placeholders);
+  const header = resolveUserPlaceholders(cfg.dup_email_header, placeholders);
+  const message1 = resolveUserPlaceholders(cfg.dup_email_message1, placeholders);
+  const footer = resolveUserPlaceholders(cfg.dup_email_footer, placeholders);
+  const message2Html = buildPipedLinkMessage2Html(
+    cfg.dup_email_message2,
+    resetUrl,
+    TOKENIZED_PW_RESET_LINK,
+    "Reset password",
+  );
   const html = buildSixPartEmailHtml({
     header,
     greetingResolved: greeting,

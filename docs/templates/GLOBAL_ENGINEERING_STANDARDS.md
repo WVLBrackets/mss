@@ -1504,7 +1504,7 @@ For **registration, password reset, duplicate-account**, and **future** transact
 
 1. **Reuse the shared HTML layout** — `buildSixPartEmailHtml()` in `src/lib/sixPartTransactionalEmail.ts` (left-aligned body, `<h1>` header, breaks, 80% footer).
 2. **Drive copy from the Config Sheet** with a **fixed six-key family** per email type: `*_email_subject`, `*_email_header`, `*_email_greeting`, `*_email_message1`, `*_email_message2`, `*_email_footer` (defaults in code when rows are absent, where the product allows).
-3. **Greeting / body placeholders** — `resolveUserPlaceholders()` from `src/lib/configPlaceholders.ts` (`{Display Name}`, `{Full Name}`, `{email}`, `{Initials}`, `{name}`). When only the recipient address is known (e.g. duplicate signup), use **`placeholdersFromEmailAddress()`**.
+3. **Greeting / body placeholders** — `resolveUserPlaceholders()` from `src/lib/configPlaceholders.ts` (`{Display Name}`, `{Full Name}`, `{email}`, `{Initials}`, `{name}`). For **duplicate-registration** mail, use **`placeholdersFromUserRow()`** with the existing DB row so full name resolves correctly; **`placeholdersFromEmailAddress()`** remains for flows where only an address string is known.
 4. **Primary link row** — When the second body block is a CTA, use **`Label|{Tokenized …}`** and **`buildPipedLinkMessage2Html()`** with the appropriate token regex (confirmation vs password reset). Plain second blocks (no URL) stay a single escaped paragraph in the same layout.
 
 **Reminder:** Any **new** transactional email in this class should follow this pattern unless the Architect approves a documented exception.
