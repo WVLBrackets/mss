@@ -9,6 +9,24 @@ export type UserPlaceholderValues = {
   email: string;
 };
 
+/**
+ * Placeholders when only the recipient email is known (e.g. duplicate-registration notice).
+ * Uses the local-part of the address for name-like fields so `{email}` / `{Display Name}` resolve sensibly.
+ */
+export function placeholdersFromEmailAddress(email: string): UserPlaceholderValues {
+  const trimmed = email.trim().toLowerCase();
+  const local = trimmed.includes("@") ? (trimmed.split("@")[0] ?? "").trim() : trimmed;
+  const safeLocal = local || "there";
+  const letters = safeLocal.replace(/[^a-zA-Z0-9]/g, "");
+  const initials = letters.slice(0, 3).toUpperCase() || "?";
+  return {
+    fullName: safeLocal,
+    displayName: safeLocal,
+    initials,
+    email: trimmed,
+  };
+}
+
 /** Placeholders when no signed-in user is available (e.g. logged-out home, sign-in page). */
 export const ANONYMOUS_USER_PLACEHOLDERS: UserPlaceholderValues = {
   fullName: "Guest",

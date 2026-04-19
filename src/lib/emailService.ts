@@ -3,7 +3,10 @@ import { escapeHtml } from "@/lib/emailTemplate";
 import { emailSubjectEnvironmentPrefix } from "@/lib/emailSubjectPrefix";
 import type { SiteConfig } from "@/lib/siteConfig";
 import type { UserPlaceholderValues } from "@/lib/configPlaceholders";
-import { resolveUserPlaceholders } from "@/lib/configPlaceholders";
+import {
+  placeholdersFromEmailAddress,
+  resolveUserPlaceholders,
+} from "@/lib/configPlaceholders";
 import {
   buildPipedLinkMessage2Html,
   buildSixPartEmailHtml,
@@ -140,16 +143,20 @@ export async function sendDuplicateRegistrationEmail(
   >,
 ): Promise<void> {
   const transport = getTransport();
-  const html = `
-<div style="max-width:560px;margin:0 auto;font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#111">
-  <h1 style="font-size:1.25rem;font-weight:600;margin:0 0 1rem">${escapeHtml(cfg.dup_email_header)}</h1>
-  <p style="margin:0 0 0.5rem">${escapeHtml(cfg.dup_email_greeting)}</p>
-  <br />
-  <p style="margin:0 0 0.5rem">${escapeHtml(cfg.dup_email_message1)}</p>
-  <p style="margin:0 0 0.5rem">${escapeHtml(cfg.dup_email_message2)}</p>
-  <br />
-  <div style="text-align:center;margin-top:1rem;font-size:14px;color:#444">${escapeHtml(cfg.dup_email_footer)}</div>
-</div>`.trim();
+  const ph = placeholdersFromEmailAddress(to);
+  const greeting = resolveUserPlaceholders(cfg.dup_email_greeting, ph);
+  const header = resolveUserPlaceholders(cfg.dup_email_header, ph);
+  const message1 = resolveUserPlaceholders(cfg.dup_email_message1, ph);
+  const message2Resolved = resolveUserPlaceholders(cfg.dup_email_message2, ph);
+  const footer = resolveUserPlaceholders(cfg.dup_email_footer, ph);
+  const message2Html = `<p style="margin:0;text-align:left">${escapeHtml(message2Resolved)}</p>`;
+  const html = buildSixPartEmailHtml({
+    header,
+    greetingResolved: greeting,
+    message1,
+    message2Html,
+    footer,
+  });
   await transport.sendMail({
     from: fromAddress(),
     to,
