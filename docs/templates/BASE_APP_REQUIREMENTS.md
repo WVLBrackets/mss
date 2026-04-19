@@ -171,7 +171,7 @@ Every row exists on **both** `PROD` and `STAGE` tabs unless noted. **All listed 
 |----------------|------|---------|
 | `site_name` | string | App title in nav |
 | `site_subtitle` | string | Subtitle under title in nav |
-| `site_logo` | path string | File under `public/` (e.g. `site/logo.svg`), served at `/{path}` |
+| `site_logo` | path string | File under `public/` (e.g. `site/logo.png`), served at `/{path}`. Relative path only—no `..`, backslashes, or `https://` URLs. Spaces and parentheses in filenames are allowed; a leading `public/` prefix is stripped if present. |
 | `signin_welcome` | string | HTML-safe or plain text; below the sign-in form (see user placeholders below) |
 | `signup_welcome` | string | Below the create-account form (same placeholders; guest fallbacks when not signed in) |
 | `password_reset_message` | string | Shown on forgot-password after submit (same response whether or not the email exists). **Optional:** if missing or empty in the sheet, a built-in default is used so the rest of config still loads. |

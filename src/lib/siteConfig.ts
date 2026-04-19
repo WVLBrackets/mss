@@ -132,24 +132,63 @@ function parseCsvRows(text: string): Map<string, string> {
   return map;
 }
 
-const SITE_LOGO_RE = /^[a-zA-Z0-9][a-zA-Z0-9/_.-]*$/;
+/**
+ * Normalizes `site_logo` from the sheet: trim, strip optional wrapping quotes,
+ * strip a mistaken `public/` prefix (path is already relative to `public/`).
+ */
+function normalizeSiteLogoPath(raw: string): string {
+  let v = raw.trim();
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) {
+    v = v.slice(1, -1).replace(/""/g, '"').trim();
+  }
+  const lower = v.toLowerCase();
+  if (lower.startsWith("public/")) {
+    v = v.slice("public/".length).trim();
+  }
+  return v;
+}
 
 function validateSiteLogo(value: string, key: SiteConfigKey): SiteConfigFailure | null {
   if (key !== "site_logo") return null;
-  if (value.includes("..") || value.startsWith("/") || value.includes("\\")) {
+  const valueNorm = normalizeSiteLogoPath(value);
+  if (!valueNorm) {
     return {
       kind: "config_error",
-      reason: "invalid_type",
+      reason: "empty",
       key,
-      detail: "site_logo must be a path under public/ (no .. or leading slash)",
+      detail: "site_logo is empty",
     };
   }
-  if (value.length > 200 || !SITE_LOGO_RE.test(value)) {
+  if (valueNorm.includes("..") || valueNorm.startsWith("/") || valueNorm.includes("\\")) {
     return {
       kind: "config_error",
       reason: "invalid_type",
       key,
-      detail: "site_logo must match [a-zA-Z0-9][a-zA-Z0-9/_.-]*",
+      detail: "site_logo must be a relative path under public/ (no .., backslashes, or leading slash)",
+    };
+  }
+  if (/\/\/|:|\?|#/.test(valueNorm)) {
+    return {
+      kind: "config_error",
+      reason: "invalid_type",
+      key,
+      detail: "site_logo must be a relative file path, not a full URL",
+    };
+  }
+  if (valueNorm.length > 200) {
+    return {
+      kind: "config_error",
+      reason: "invalid_type",
+      key,
+      detail: "site_logo path is too long (max 200 characters)",
+    };
+  }
+  if (/[<>"\x00-\x1f]/.test(valueNorm)) {
+    return {
+      kind: "config_error",
+      reason: "invalid_type",
+      key,
+      detail: "site_logo contains disallowed characters (e.g. quotes, angle brackets, or control characters)",
     };
   }
   return null;
@@ -232,7 +271,7 @@ function buildConfig(map: Map<string, string>): SiteConfig | SiteConfigFailure {
     }
     const err = validateValue(key, val);
     if (err) return err;
-    out[key] = val;
+    out[key] = key === "site_logo" ? normalizeSiteLogoPath(val) : val;
   }
   for (const key of Object.keys(AUTH_MESSAGE_DEFAULTS) as AuthMessageKey[]) {
     const raw = map.get(key)?.trim();
