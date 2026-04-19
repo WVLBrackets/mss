@@ -1,5 +1,5 @@
 import { getCurrentEnvironment } from "@/lib/appEnvironment";
-import { Environment } from "@/lib/constants";
+import { Environment, type EnvironmentValue } from "@/lib/constants";
 import { parseConfigButton } from "@/lib/configButton";
 
 /**
@@ -124,7 +124,8 @@ function parseCsvRows(text: string): Map<string, string> {
     const cells = splitCsvLine(line);
     if (cells.length < 2) continue;
     const k0 = cells[0]!.replace(/^"|"$/g, "").trim();
-    const v0 = cells.slice(1).join(",").trim();
+    /** Use column B only. Joining `slice(1)` merges unrelated columns (notes, etc.) and breaks emails and paths. */
+    const v0 = (cells[1] ?? "").trim();
     const nk = normalizeKey(k0);
     if (nk === "parameter" || nk === "key" || nk === "name") continue;
     map.set(nk, v0);
@@ -242,6 +243,7 @@ function stripEmailWrappingQuotes(v: string): string {
  */
 function normalizeEmailContactAddress(raw: string): string {
   let v = raw.trim().replace(/^\ufeff/, "").replace(INVISIBLE_EMAIL_JUNK, "");
+  v = v.normalize("NFKC");
   v = stripEmailWrappingQuotes(v);
   const mailto = v.toLowerCase();
   if (mailto.startsWith("mailto:")) {
@@ -252,6 +254,7 @@ function normalizeEmailContactAddress(raw: string): string {
   if (angle?.[1]) {
     return angle[1].trim().replace(/,\s*$/, "");
   }
+  v = v.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
   return v.trim().replace(/,\s*$/, "");
 }
 
@@ -388,6 +391,160 @@ async function fetchConfigUncached(): Promise<SiteConfig | SiteConfigFailure> {
  */
 export async function loadSiteConfig(): Promise<SiteConfig | SiteConfigFailure> {
   return fetchConfigUncached();
+}
+
+/** Character-level snapshot for debugging sheet export issues. */
+export interface SiteConfigSheetCharDiag {
+  length: number;
+  /** UTF-16 code units (capped) for invisible / confusable character diagnosis. */
+  codeUnits: number[];
+  normalized: string;
+  passesStrictEmailRegex: boolean;
+}
+
+export interface SiteConfigSheetInspection {
+  vercelEnv: string | undefined;
+  currentEnvironment: EnvironmentValue;
+  sheetGid: "prod" | "stage";
+  fetch: {
+    ok: boolean;
+    status?: number;
+    detail?: string;
+    bodyChars?: number;
+  };
+  keyCount: number;
+  keysAlphabetical: string[];
+  /** How `email_contact_address` parses: column B only vs old multi-column join (if row exists). */
+  emailRowParsing?: {
+    secondColumn: string;
+    joinedRestColumns: string;
+  };
+  build: SiteConfig | SiteConfigFailure;
+  emailContactDiagnostics?: SiteConfigSheetCharDiag;
+}
+
+/**
+ * Finds the `email_contact_address` CSV row and compares column B vs joining B..end
+ * (legacy behavior that broke when a third column existed).
+ */
+function parseEmailRowVariants(text: string): {
+  secondColumn: string;
+  joinedRestColumns: string;
+} | null {
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const cells = splitCsvLine(line);
+    if (cells.length < 2) continue;
+    const k0 = cells[0]!.replace(/^"|"$/g, "").trim();
+    if (normalizeKey(k0) !== "email_contact_address") continue;
+    return {
+      secondColumn: (cells[1] ?? "").trim(),
+      joinedRestColumns: cells.slice(1).join(",").trim(),
+    };
+  }
+  return null;
+}
+
+function charDiagForEmailRaw(raw: string): SiteConfigSheetCharDiag {
+  const normalized = normalizeEmailContactAddress(raw);
+  const cap = 120;
+  const codeUnits: number[] = [];
+  for (let i = 0; i < Math.min(raw.length, cap); i++) {
+    codeUnits.push(raw.charCodeAt(i)!);
+  }
+  return {
+    length: raw.length,
+    codeUnits,
+    normalized,
+    passesStrictEmailRegex: EMAIL_CONTACT_RE.test(normalized),
+  };
+}
+
+/**
+ * Fetches the Config Sheet CSV (no cache), parses keys, runs `buildConfig`, and returns
+ * diagnostics. Intended for `/api/site-config/debug` behind a server secret — not for
+ * production browsers.
+ */
+export async function inspectSiteConfigSheet(): Promise<SiteConfigSheetInspection> {
+  const vercelEnv = process.env.VERCEL_ENV;
+  const currentEnvironment = getCurrentEnvironment();
+  const isProd = currentEnvironment === Environment.PRODUCTION;
+  const sheetGid = isProd ? ("prod" as const) : ("stage" as const);
+  const url = getSheetCsvUrl();
+  if (!url) {
+    return {
+      vercelEnv,
+      currentEnvironment,
+      sheetGid,
+      fetch: { ok: false, detail: "SITE_CONFIG_SHEET_ID or gid env missing" },
+      keyCount: 0,
+      keysAlphabetical: [],
+      build: {
+        kind: "config_error",
+        reason: "fetch_failed",
+        detail:
+          "SITE_CONFIG_SHEET_ID and SITE_CONFIG_GID_PROD / SITE_CONFIG_GID_STAGE must be set",
+      },
+    };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, { cache: "no-store" });
+  } catch (e) {
+    return {
+      vercelEnv,
+      currentEnvironment,
+      sheetGid,
+      fetch: {
+        ok: false,
+        detail: e instanceof Error ? e.message : "network error",
+      },
+      keyCount: 0,
+      keysAlphabetical: [],
+      build: {
+        kind: "config_error",
+        reason: "fetch_failed",
+        detail: e instanceof Error ? e.message : "network error",
+      },
+    };
+  }
+
+  if (!res.ok) {
+    return {
+      vercelEnv,
+      currentEnvironment,
+      sheetGid,
+      fetch: { ok: false, status: res.status, detail: `HTTP ${res.status}` },
+      keyCount: 0,
+      keysAlphabetical: [],
+      build: {
+        kind: "config_error",
+        reason: "fetch_failed",
+        detail: `HTTP ${res.status}`,
+      },
+    };
+  }
+
+  const text = await res.text();
+  const map = parseCsvRows(text);
+  const keysAlphabetical = [...map.keys()].sort();
+  const emailRowParsing = parseEmailRowVariants(text);
+  const rawEmail = map.get("email_contact_address");
+  const build = buildConfig(map);
+
+  return {
+    vercelEnv,
+    currentEnvironment,
+    sheetGid,
+    fetch: { ok: true, status: res.status, bodyChars: text.length },
+    keyCount: map.size,
+    keysAlphabetical,
+    emailRowParsing: emailRowParsing ?? undefined,
+    build,
+    emailContactDiagnostics: rawEmail ? charDiagForEmailRaw(rawEmail) : undefined,
+  };
 }
 
 /**
