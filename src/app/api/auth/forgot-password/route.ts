@@ -23,28 +23,40 @@ export async function POST(request: Request) {
 
     const cfg = await loadSiteConfig();
     if (isSiteConfigError(cfg)) {
+      console.error("[forgot-password] site config unavailable", {
+        reason: cfg.reason,
+        key: cfg.key,
+        detail: cfg.detail,
+      });
       return ApiErrors.serverError();
     }
 
     const env = getCurrentEnvironment();
     const user = await getUserByEmail(body.email, env);
-    if (user) {
-      const token = generateSecureToken();
-      const expires = new Date(Date.now() + TokenExpiration.RESET_MS);
-      await setResetToken(body.email, env, token, expires);
-      const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-      const resetUrl = `${base.replace(/\/$/, "")}/auth/reset-password?token=${encodeURIComponent(token)}`;
-      try {
-        await sendPasswordResetEmail(user.email, cfg, {
-          fullName: user.name,
-          displayName: user.display_name,
-          initials: user.initials,
-          email: user.email,
-        }, resetUrl);
-      } catch (e) {
-        console.error("[forgot-password] email", e);
-        return ApiErrors.serverError();
-      }
+    if (!user) {
+      // Same JSON as success path (no email enumeration); log for operators only.
+      console.info("[forgot-password] completed no-op (no matching user for this environment)", {
+        environment: env,
+      });
+      return successResponse({ ok: true }, cfg.password_reset_message);
+    }
+
+    const token = generateSecureToken();
+    const expires = new Date(Date.now() + TokenExpiration.RESET_MS);
+    await setResetToken(body.email, env, token, expires);
+    const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+    const resetUrl = `${base.replace(/\/$/, "")}/auth/reset-password?token=${encodeURIComponent(token)}`;
+    try {
+      await sendPasswordResetEmail(user.email, cfg, {
+        fullName: user.name,
+        displayName: user.display_name,
+        initials: user.initials,
+        email: user.email,
+      }, resetUrl);
+      console.info("[forgot-password] reset email sent", { environment: env });
+    } catch (e) {
+      console.error("[forgot-password] email send failed", e);
+      return ApiErrors.serverError();
     }
     return successResponse({ ok: true }, cfg.password_reset_message);
   } catch (e) {
