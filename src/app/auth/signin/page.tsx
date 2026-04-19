@@ -28,6 +28,9 @@ type PasswordFieldProps = {
   autoComplete: string;
   "data-testid"?: string;
   required?: boolean;
+  /** When true, blocks browser autofill until the user focuses the field (create-account flow). */
+  readOnly?: boolean;
+  onInputFocus?: () => void;
 };
 
 /**
@@ -41,6 +44,8 @@ function PasswordField({
   autoComplete,
   "data-testid": dataTestId,
   required = true,
+  readOnly = false,
+  onInputFocus,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
   return (
@@ -53,7 +58,9 @@ function PasswordField({
           type={visible ? "text" : "password"}
           autoComplete={autoComplete}
           value={value}
+          readOnly={readOnly}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onInputFocus}
           data-testid={dataTestId}
           required={required}
         />
@@ -76,10 +83,17 @@ function SignInPageInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const [mode, setMode] = useState<"signin" | "register">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [signInEmail, setSignInEmail] = useState("");
+  const [signInPassword, setSignInPassword] = useState("");
+
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  /** False until user focuses a register credential field — reduces browser autofill on load. */
+  const [registerFieldsUnlocked, setRegisterFieldsUnlocked] = useState(false);
+
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -102,7 +116,16 @@ function SignInPageInner() {
     setMode(next);
     setError(null);
     setMessage(null);
+    if (next === "register") {
+      setRegisterFieldsUnlocked(false);
+    }
   }
+
+  function unlockRegisterFields() {
+    setRegisterFieldsUnlocked(true);
+  }
+
+  const registerInputsReadOnly = mode === "register" && !registerFieldsUnlocked && !devBypass;
 
   async function onRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -114,10 +137,10 @@ function SignInPageInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
-          name,
-          password,
-          confirmPassword,
+          email: regEmail,
+          name: regName,
+          password: regPassword,
+          confirmPassword: regConfirmPassword,
         }),
       });
       const data = await res.json();
@@ -143,8 +166,8 @@ function SignInPageInner() {
       const devEmail =
         process.env.NEXT_PUBLIC_DEV_AUTH_EMAIL || BOOTSTRAP_ADMIN_EMAIL;
       const res = await signIn("credentials", {
-        email: devBypass ? devEmail : email,
-        password: devBypass ? "dev" : password,
+        email: devBypass ? devEmail : signInEmail,
+        password: devBypass ? "dev" : signInPassword,
         redirect: false,
       });
       if (res?.error) {
@@ -170,50 +193,50 @@ function SignInPageInner() {
     resolveUserPlaceholders(siteConfig.signup_welcome, ANONYMOUS_USER_PLACEHOLDERS);
 
   return (
-    <div className="mx-auto max-w-md rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-      <div className="flex gap-2 border-b border-neutral-100 pb-3">
-        <button
-          type="button"
-          className={`flex-1 rounded px-3 py-2 text-sm font-medium ${
-            mode === "signin" ? "bg-neutral-900 text-white" : "bg-neutral-100"
-          }`}
-          onClick={() => switchMode("signin")}
-          data-testid="auth-tab-signin"
-        >
-          Sign in
-        </button>
-        <button
-          type="button"
-          className={`flex-1 rounded px-3 py-2 text-sm font-medium ${
-            mode === "register" ? "bg-neutral-900 text-white" : "bg-neutral-100"
-          }`}
-          onClick={() => switchMode("register")}
-          data-testid="auth-tab-register"
-        >
-          Create account
-        </button>
-      </div>
+    <div className="mx-auto max-w-md">
+      <div className="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
+        <div className="flex gap-2 border-b border-neutral-100 pb-3">
+          <button
+            type="button"
+            className={`flex-1 rounded px-3 py-2 text-sm font-medium ${
+              mode === "signin" ? "bg-neutral-900 text-white" : "bg-neutral-100"
+            }`}
+            onClick={() => switchMode("signin")}
+            data-testid="auth-tab-signin"
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            className={`flex-1 rounded px-3 py-2 text-sm font-medium ${
+              mode === "register" ? "bg-neutral-900 text-white" : "bg-neutral-100"
+            }`}
+            onClick={() => switchMode("register")}
+            data-testid="auth-tab-register"
+          >
+            Create account
+          </button>
+        </div>
 
-      {devBypass ? (
-        <p className="mt-3 rounded bg-orange-50 p-2 text-xs text-orange-900">
-          Local dev: auth bypass is on. Sign in uses the dev admin user without real credentials.
-          Use staging/preview to exercise registration and email confirmation end-to-end.
-        </p>
-      ) : null}
+        {devBypass ? (
+          <p className="mt-3 rounded bg-orange-50 p-2 text-xs text-orange-900">
+            Local dev: auth bypass is on. Sign in uses the dev admin user without real credentials.
+            Use staging/preview to exercise registration and email confirmation end-to-end.
+          </p>
+        ) : null}
 
-      {confirmed ? (
-        <p className="mt-3 text-sm text-green-700">Email confirmed. You can sign in.</p>
-      ) : null}
-      {resetOk ? (
-        <p className="mt-3 text-sm text-green-700">Password updated. You can sign in.</p>
-      ) : null}
-      {qpError ? (
-        <p className="mt-3 text-sm text-red-600">Link error: {qpError.replace(/_/g, " ")}</p>
-      ) : null}
+        {confirmed ? (
+          <p className="mt-3 text-sm text-green-700">Email confirmed. You can sign in.</p>
+        ) : null}
+        {resetOk ? (
+          <p className="mt-3 text-sm text-green-700">Password updated. You can sign in.</p>
+        ) : null}
+        {qpError ? (
+          <p className="mt-3 text-sm text-red-600">Link error: {qpError.replace(/_/g, " ")}</p>
+        ) : null}
 
-      {mode === "signin" ? (
-        <>
-          <form className="mt-4 space-y-3" onSubmit={onSignIn} autoComplete="on">
+        {mode === "signin" ? (
+          <form className="relative mt-4 space-y-3" onSubmit={onSignIn} autoComplete="on">
             {!devBypass ? (
               <>
                 <label className="block text-sm" htmlFor="signin-email-input">
@@ -222,9 +245,9 @@ function SignInPageInner() {
                     id="signin-email-input"
                     className="mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
                     type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="username"
+                    value={signInEmail}
+                    onChange={(e) => setSignInEmail(e.target.value)}
                     data-testid="signin-email"
                     required
                   />
@@ -232,8 +255,8 @@ function SignInPageInner() {
                 <PasswordField
                   id="signin-password-input"
                   label="Password"
-                  value={password}
-                  onChange={setPassword}
+                  value={signInPassword}
+                  onChange={setSignInPassword}
                   autoComplete="current-password"
                   data-testid="signin-password"
                 />
@@ -258,17 +281,14 @@ function SignInPageInner() {
               </p>
             ) : null}
           </form>
-          {signinWelcome ? (
-            <p className="mt-3 whitespace-pre-line text-xs text-neutral-500">{signinWelcome}</p>
-          ) : null}
-        </>
-      ) : (
-        <>
+        ) : (
           <form
-            className="mt-4 space-y-3"
+            className="relative mt-4 space-y-3"
             onSubmit={onRegister}
             autoComplete="off"
             data-lpignore="true"
+            data-1p-ignore="true"
+            data-bwignore="true"
           >
             {devBypass ? (
               <p className="text-sm text-neutral-600">
@@ -277,15 +297,22 @@ function SignInPageInner() {
               </p>
             ) : (
               <>
+                <div
+                  className="pointer-events-none absolute left-0 top-0 -z-10 h-px w-px overflow-hidden opacity-0"
+                  aria-hidden
+                >
+                  <input type="text" autoComplete="username" tabIndex={-1} readOnly />
+                  <input type="password" autoComplete="current-password" tabIndex={-1} readOnly />
+                </div>
                 <label className="block text-sm" htmlFor="register-name-input">
                   Name
                   <input
                     id="register-name-input"
                     className="mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
                     autoComplete="off"
-                    name="full_name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    name="reg_full_name"
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
                     data-testid="register-name"
                     required
                   />
@@ -297,9 +324,11 @@ function SignInPageInner() {
                     className="mt-1 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
                     type="email"
                     autoComplete="off"
-                    name="signup_email_field"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    name="reg_email_address"
+                    value={regEmail}
+                    readOnly={registerInputsReadOnly}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    onFocus={unlockRegisterFields}
                     data-testid="register-email"
                     required
                   />
@@ -307,18 +336,22 @@ function SignInPageInner() {
                 <PasswordField
                   id="register-password-input"
                   label="Password"
-                  value={password}
-                  onChange={setPassword}
+                  value={regPassword}
+                  onChange={setRegPassword}
                   autoComplete="new-password"
                   data-testid="register-password"
+                  readOnly={registerInputsReadOnly}
+                  onInputFocus={unlockRegisterFields}
                 />
                 <PasswordField
                   id="register-confirm-password-input"
                   label="Confirm password"
-                  value={confirmPassword}
-                  onChange={setConfirmPassword}
+                  value={regConfirmPassword}
+                  onChange={setRegConfirmPassword}
                   autoComplete="new-password"
                   data-testid="register-confirm-password"
+                  readOnly={registerInputsReadOnly}
+                  onInputFocus={unlockRegisterFields}
                 />
               </>
             )}
@@ -335,11 +368,15 @@ function SignInPageInner() {
               </button>
             ) : null}
           </form>
-          {signupWelcome ? (
-            <p className="mt-3 whitespace-pre-line text-xs text-neutral-500">{signupWelcome}</p>
-          ) : null}
-        </>
-      )}
+        )}
+      </div>
+
+      {mode === "signin" && signinWelcome ? (
+        <p className="mt-3 whitespace-pre-line px-1 text-xs text-neutral-500">{signinWelcome}</p>
+      ) : null}
+      {mode === "register" && signupWelcome ? (
+        <p className="mt-3 whitespace-pre-line px-1 text-xs text-neutral-500">{signupWelcome}</p>
+      ) : null}
     </div>
   );
 }
