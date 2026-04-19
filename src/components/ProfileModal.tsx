@@ -25,7 +25,8 @@ type Snapshot = {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onUpdated: () => void;
+  /** Called after a successful save; await so the session (header avatar) can refresh first. */
+  onUpdated: () => void | Promise<void>;
 }
 
 /**
@@ -213,7 +214,7 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
       };
       setServerAvatarUrl(nextAvatarUrl);
       setPendingAvatarRemoval(false);
-      await Promise.resolve(onUpdated());
+      await onUpdated();
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");

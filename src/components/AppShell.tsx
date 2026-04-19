@@ -117,7 +117,9 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
       <ProfileModal
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
-        onUpdated={() => void update()}
+        onUpdated={async () => {
+          await update();
+        }}
       />
     </div>
   );

@@ -32,6 +32,17 @@ export function isPrivateStoredAvatar(
 }
 
 /**
+ * Query segment so `<img src>` changes when the underlying blob pathname changes (private
+ * avatars otherwise always used `/api/avatar/view` and browsers kept showing the old bitmap).
+ * The view route resolves the blob from the database; `p` is ignored server-side.
+ */
+function privateAvatarCacheBuster(stored: string): string | null {
+  const pathname = stored.slice(PRIVATE_AVATAR_PREFIX.length);
+  if (!isSafeAvatarBlobPathname(pathname)) return null;
+  return `p=${encodeURIComponent(pathname)}`;
+}
+
+/**
  * `src` for `<img>`: public URLs pass through; private rows use the authenticated proxy route.
  */
 export function avatarSrcForImg(
@@ -40,8 +51,10 @@ export function avatarSrcForImg(
 ): string | null {
   if (!stored) return null;
   if (!isPrivateStoredAvatar(stored)) return stored;
-  if (viewer === "self") return "/api/avatar/view";
-  return `/api/avatar/view?userId=${encodeURIComponent(viewer.userId)}`;
+  const q = privateAvatarCacheBuster(stored);
+  if (!q) return null;
+  if (viewer === "self") return `/api/avatar/view?${q}`;
+  return `/api/avatar/view?userId=${encodeURIComponent(viewer.userId)}&${q}`;
 }
 
 /** Maps DB `avatar_url` to NextAuth `user.image` (always the signed-in user). */
