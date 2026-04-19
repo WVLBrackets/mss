@@ -54,10 +54,37 @@ Use this document **every time** you spin up a new application that follows the 
 
 ### 2.4 Email (transactional)
 
-- [ ] Choose provider (SMTP, Resend, SendGrid, etc.)—align with WMM if reusing patterns.
-- [ ] Create API key or SMTP credentials; add to **Vercel** env (and `.env.local` for local tests).
-- [ ] Set **from** address and domain authentication (SPF/DKIM) for production domain.
-- [ ] Send test: registration confirmation + password reset.
+Pick **one path** below. The base app uses **Nodemailer + SMTP** (`EMAIL_SERVER_*`, `EMAIL_FROM` in Part 3)—no code fork required; only credentials differ.
+
+#### Path A — Custom sending domain (e.g. Resend)
+
+Use when you have (or will add) a **DNS domain you control** so the provider can verify it and you can send from `@yourdomain.com`.
+
+- [ ] Create account with a transactional provider (**Resend**, SendGrid, etc.).
+- [ ] **Verify the domain** in the provider (add SPF/DKIM DNS records per their docs).
+- [ ] Create API key or SMTP credentials. For **Resend SMTP**: host `smtp.resend.com`, user `resend`, password = API key; ports `587` (STARTTLS, `EMAIL_SERVER_SECURE=false`) or `465` (`EMAIL_SERVER_SECURE=true`). See [Resend SMTP](https://resend.com/docs/send-with-smtp).
+- [ ] Set `EMAIL_FROM` to an address on the verified domain (e.g. `My App <noreply@yourdomain.com>`).
+- [ ] Add all `EMAIL_SERVER_*` and `EMAIL_FROM` to **Vercel** (Preview + Production) and **`.env.local`** for local tests; redeploy.
+- [ ] Send test: **registration confirmation** + **password reset** on Preview, then Production.
+
+#### Path B — No custom domain (v1): Gmail SMTP
+
+Use when the app only has **Vercel default hostnames** and you do **not** yet have a verified domain at Resend (you **cannot** use an arbitrary `@gmail.com` as the From address **through** Resend; use Gmail’s own SMTP instead).
+
+- [ ] Create or designate a **dedicated Gmail** inbox for the app (keeps app mail separate from personal mail).
+- [ ] On that Google Account: enable **2-Step Verification** — [Google Account → Security](https://myaccount.google.com/security).
+- [ ] Create an **App password**: [App passwords](https://myaccount.google.com/apppasswords) (or [Google Help](https://support.google.com/accounts/answer/185833)). Choose app **Mail** / device **Other** (e.g. `Vercel`). Store the **16-character** value as **`EMAIL_SERVER_PASSWORD`** — **not** the normal Gmail password.
+- [ ] Set in **Vercel** and **`.env.local`**:
+  - `EMAIL_SERVER_HOST` = `smtp.gmail.com`
+  - `EMAIL_SERVER_PORT` = `587`
+  - `EMAIL_SERVER_SECURE` = `false`
+  - `EMAIL_SERVER_USER` = full Gmail address
+  - `EMAIL_SERVER_PASSWORD` = App password from above
+  - `EMAIL_FROM` = same address, or `Display Name <address@gmail.com>`
+- [ ] **Redeploy** after saving variables.
+- [ ] Send test: **registration confirmation** + **password reset** on Preview, then Production.
+
+**Troubleshooting — Preview says `EMAIL_SERVER_HOST is required` but Vercel shows “All Environments”:** Vercel **Sensitive** env values are not available during `next build`; some Next.js builds can treat `process.env.FOO` as empty at compile time—use **runtime bracket reads** (e.g. `process.env["EMAIL_SERVER_HOST"]` via a local `const env = process.env`) in the mail module so Preview matches Production. Also check that no variable is restricted to a **single Git branch** that excludes your staging branch.
 
 ---
 
@@ -90,7 +117,7 @@ Set in **Vercel → Project → Settings → Environment Variables** (scope Prod
 | Variable | Notes |
 |----------|--------|
 | `ADMIN_EMAIL` | Not required if PRD bootstrap + DB-only admins; add if you want env-listed second admin |
-| `EMAIL_SERVER_HOST`, `EMAIL_SERVER_PORT`, `EMAIL_SERVER_USER`, `EMAIL_SERVER_PASSWORD`, `EMAIL_SERVER_SECURE`, `EMAIL_FROM` | SMTP / transactional email (registration + reset) | Same pattern per environment | Local provider or staging inbox |
+| `EMAIL_SERVER_HOST`, `EMAIL_SERVER_PORT`, `EMAIL_SERVER_USER`, `EMAIL_SERVER_PASSWORD`, `EMAIL_SERVER_SECURE`, `EMAIL_FROM` | Transactional SMTP (**§2.4**). Same variable names for Path A (Resend + verified domain) or Path B (Gmail + App Password); scope Preview vs Production in Vercel; mirror in `.env.local` for local. |
 
 **Secrets checklist:** no secrets in Config Sheet; no secrets in client-exposed `NEXT_PUBLIC_*` except documented public keys.
 

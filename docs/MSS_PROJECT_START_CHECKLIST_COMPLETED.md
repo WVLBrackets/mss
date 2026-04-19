@@ -8,6 +8,7 @@ This is a **working copy** of [docs/templates/PROJECT_START_CHECKLIST.md](templa
 | Vercel project name | `mss` (dashboard); production host `mss-umber.vercel.app` |
 | Production URL | https://mss-umber.vercel.app |
 | Preview URL pattern | Unique URL per deployment (see **Deployments** in Vercel; often `mss-git-<branch>-<org>.vercel.app` style for PRs) |
+| Transactional email (v1) | **Path B — Gmail SMTP** ([template §2.4 Path B](templates/PROJECT_START_CHECKLIST.md#24-email-transactional)): dedicated inbox **`mystudioscheduler@gmail.com`**, Google **2-Step Verification** + **App Password** → `EMAIL_SERVER_*` / `EMAIL_FROM` in Vercel (Preview + Production) and `.env.local`. No custom domain / Resend for v1. |
 | Neon project | _pending_ |
 | Config Sheet ID | _pending_ |
 | Tab `PROD` GID | _pending_ |
@@ -307,8 +308,16 @@ You still need **`NEXTAUTH_URL`**, **`NEXTAUTH_SECRET`**, and (for email flows) 
 
 ### 2.4 Email (transactional)
 
-- [ ] Configure SMTP (or provider); set `EMAIL_SERVER_*` and `EMAIL_FROM` in Vercel and locally.
-- [ ] Send test: registration confirmation + password reset on **Preview** before Production.
+Generic branching doc: [PROJECT_START_CHECKLIST.md §2.4 — Path A vs Path B](templates/PROJECT_START_CHECKLIST.md#24-email-transactional).
+
+**MSS chose Path B (no custom domain): Gmail SMTP**
+
+- [x] Dedicated Gmail inbox: **`mystudioscheduler@gmail.com`** (sending identity for registration + password reset).
+- [x] Google Account **2-Step Verification** enabled for that mailbox ([Security](https://myaccount.google.com/security)).
+- [x] **App password** created ([App passwords](https://myaccount.google.com/apppasswords); [help](https://support.google.com/accounts/answer/185833)) — used as **`EMAIL_SERVER_PASSWORD`** in Vercel and `.env.local` (never the normal Gmail password).
+- [x] Vercel env: `EMAIL_SERVER_HOST=smtp.gmail.com`, `EMAIL_SERVER_PORT=587`, `EMAIL_SERVER_SECURE=false`, `EMAIL_SERVER_USER` / `EMAIL_FROM` = `mystudioscheduler@gmail.com` (or `Display Name <mystudioscheduler@gmail.com>`), `EMAIL_SERVER_PASSWORD` = app password — scoped to **Preview** and **Production**; redeploy triggered.
+- [x] Local: same keys in **`.env.local`** for `npm run dev` mail tests (optional).
+- [ ] **Smoke test after deploy:** Preview → register → confirm email; forgot-password → reset email. Repeat on Production when ready.
 
 ---
 

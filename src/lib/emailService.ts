@@ -1,12 +1,18 @@
 import nodemailer from "nodemailer";
 import { escapeHtml } from "@/lib/emailTemplate";
 
+/**
+ * Reads mail-related env at **runtime**. Dot access (`process.env.FOO`) can be
+ * compile-replaced; Vercel **Sensitive** values are absent during `next build`, which
+ * can leave Preview bundles with empty host while Production builds look fine.
+ */
 function getTransport() {
-  const host = process.env.EMAIL_SERVER_HOST;
-  const port = Number(process.env.EMAIL_SERVER_PORT || "587");
-  const user = process.env.EMAIL_SERVER_USER;
-  const pass = process.env.EMAIL_SERVER_PASSWORD;
-  const secure = process.env.EMAIL_SERVER_SECURE === "true";
+  const env = process.env;
+  const host = env["EMAIL_SERVER_HOST"];
+  const port = Number(env["EMAIL_SERVER_PORT"] || "587");
+  const user = env["EMAIL_SERVER_USER"];
+  const pass = env["EMAIL_SERVER_PASSWORD"];
+  const secure = env["EMAIL_SERVER_SECURE"] === "true";
   if (!host) {
     throw new Error("EMAIL_SERVER_HOST is required to send email");
   }
@@ -19,7 +25,8 @@ function getTransport() {
 }
 
 function fromAddress(): string {
-  return process.env.EMAIL_FROM ?? "noreply@localhost";
+  const v = process.env["EMAIL_FROM"];
+  return v && v !== "" ? v : "noreply@localhost";
 }
 
 /**
