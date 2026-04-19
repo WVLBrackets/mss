@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function ResetPasswordPageWrapper() {
   return (
@@ -18,6 +19,8 @@ function ResetPasswordInner() {
   const token = sp.get("token") ?? "";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -54,27 +57,63 @@ function ResetPasswordInner() {
     <div className="mx-auto max-w-md rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
       <h1 className="text-lg font-semibold">Reset password</h1>
       <form className="mt-4 space-y-3" onSubmit={onSubmit}>
-        <label className="block text-sm">
+        <label className="block text-sm" htmlFor="reset-password-field">
           New password
-          <input
-            className="mt-1 w-full rounded border px-2 py-1"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            data-testid="reset-password"
-          />
+          <div className="relative mt-1">
+            <input
+              id="reset-password-field"
+              className="w-full rounded border border-neutral-300 py-1.5 pl-2 pr-10 text-sm"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              data-testid="reset-password"
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 right-0 flex w-10 cursor-pointer items-center justify-center rounded-r text-neutral-500 hover:bg-neutral-50 hover:text-neutral-800"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              title={showPassword ? "Hide password" : "Show password"}
+              tabIndex={-1}
+              onClick={() => setShowPassword((v) => !v)}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" aria-hidden />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden />
+              )}
+            </button>
+          </div>
         </label>
-        <label className="block text-sm">
+        <label className="block text-sm" htmlFor="reset-confirm-password-field">
           Confirm password
-          <input
-            className="mt-1 w-full rounded border px-2 py-1"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            data-testid="reset-confirm-password"
-          />
+          <div className="relative mt-1">
+            <input
+              id="reset-confirm-password-field"
+              className="w-full rounded border border-neutral-300 py-1.5 pl-2 pr-10 text-sm"
+              type={showConfirm ? "text" : "password"}
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              data-testid="reset-confirm-password"
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 right-0 flex w-10 cursor-pointer items-center justify-center rounded-r text-neutral-500 hover:bg-neutral-50 hover:text-neutral-800"
+              aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
+              title={showConfirm ? "Hide confirm password" : "Show confirm password"}
+              tabIndex={-1}
+              onClick={() => setShowConfirm((v) => !v)}
+            >
+              {showConfirm ? (
+                <EyeOff className="h-4 w-4" aria-hidden />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden />
+              )}
+            </button>
+          </div>
         </label>
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         <button

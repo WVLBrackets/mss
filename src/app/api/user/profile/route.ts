@@ -52,6 +52,7 @@ export async function PATCH(request: Request) {
     const initialsRaw =
       typeof body.initials === "string" ? body.initials.trim().toUpperCase() : undefined;
     const initials = initialsRaw !== undefined ? initialsRaw.slice(0, 3) : undefined;
+    const removeAvatar = body.remove_avatar === true;
 
     if (name !== undefined && !name) {
       return ApiErrors.validationError("Full name is required");
@@ -68,7 +69,8 @@ export async function PATCH(request: Request) {
     if (
       name === undefined &&
       displayName === undefined &&
-      initials === undefined
+      initials === undefined &&
+      !removeAvatar
     ) {
       return ApiErrors.validationError("No profile fields to update");
     }
@@ -80,6 +82,7 @@ export async function PATCH(request: Request) {
       ...(name !== undefined ? { name } : {}),
       ...(displayName !== undefined ? { displayName } : {}),
       ...(initials !== undefined ? { initials } : {}),
+      ...(removeAvatar ? { avatarUrl: null } : {}),
     });
     return successResponse({ ok: true });
   } catch (e) {

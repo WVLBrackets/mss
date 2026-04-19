@@ -35,7 +35,12 @@ export async function POST(request: Request) {
       const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
       const resetUrl = `${base.replace(/\/$/, "")}/auth/reset-password?token=${encodeURIComponent(token)}`;
       try {
-        await sendPasswordResetEmail(user.email, user.display_name, resetUrl);
+        await sendPasswordResetEmail(user.email, cfg, {
+          fullName: user.name,
+          displayName: user.display_name,
+          initials: user.initials,
+          email: user.email,
+        }, resetUrl);
       } catch (e) {
         console.error("[forgot-password] email", e);
         return ApiErrors.serverError();

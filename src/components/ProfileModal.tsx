@@ -43,6 +43,8 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
   const [serverAvatarUrl, setServerAvatarUrl] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
+  /** True when the user chose Remove; saved avatar is hidden until Save (or cleared on Cancel). */
+  const [pendingAvatarRemoval, setPendingAvatarRemoval] = useState(false);
   const [uploadAvailable, setUploadAvailable] = useState(true);
 
   const snapshot = useRef<Snapshot | null>(null);
@@ -62,6 +64,7 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
       return null;
     });
     setPendingFile(null);
+    setPendingAvatarRemoval(false);
   }, []);
 
   const loadProfile = useCallback(async () => {
@@ -105,7 +108,8 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
     (fullName.trim() !== snapshot.current.name ||
       displayName.trim() !== snapshot.current.displayName ||
       initials.trim().toUpperCase() !== snapshot.current.initials.toUpperCase() ||
-      pendingFile !== null);
+      pendingFile !== null ||
+      pendingAvatarRemoval);
 
   function onPickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     if (!uploadAvailable) {
@@ -122,6 +126,18 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
     const url = URL.createObjectURL(file);
     setPendingPreviewUrl(url);
     setPendingFile(file);
+    setPendingAvatarRemoval(false);
+  }
+
+  function onRemoveAvatarClick() {
+    if (pendingPreviewUrl) {
+      URL.revokeObjectURL(pendingPreviewUrl);
+      setPendingPreviewUrl(null);
+      setPendingFile(null);
+    }
+    if (serverAvatarUrl) {
+      setPendingAvatarRemoval(true);
+    }
   }
 
   async function postAvatar(file: File): Promise<string | null> {
@@ -151,6 +167,7 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
     setError(null);
     try {
       let nextAvatarUrl = serverAvatarUrl;
+      let uploadedNewAvatarThisSave = false;
       if (pendingFile) {
         if (!uploadAvailable) {
           setError(
@@ -161,11 +178,14 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
         const uploaded = await postAvatar(pendingFile);
         if (!uploaded) return false;
         nextAvatarUrl = uploaded;
+        uploadedNewAvatarThisSave = true;
         setPendingPreviewUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev);
           return null;
         });
         setPendingFile(null);
+      } else if (pendingAvatarRemoval) {
+        nextAvatarUrl = null;
       }
 
       const res = await fetchWithCsrf("/api/user/profile", {
@@ -175,6 +195,9 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
           name: fullName.trim(),
           display_name: displayName.trim(),
           initials: initials.trim().toUpperCase().slice(0, 3),
+          ...(pendingAvatarRemoval && !uploadedNewAvatarThisSave
+            ? { remove_avatar: true }
+            : {}),
         }),
       });
       const data = await res.json();
@@ -188,6 +211,8 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
         initials: initials.trim().toUpperCase().slice(0, 3),
         avatarUrl: nextAvatarUrl,
       };
+      setServerAvatarUrl(nextAvatarUrl);
+      setPendingAvatarRemoval(false);
       await Promise.resolve(onUpdated());
       return true;
     } catch (e) {
@@ -243,7 +268,9 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
 
   if (!open) return null;
 
-  const showAvatarImage = Boolean(pendingPreviewUrl || serverAvatarUrl);
+  const showAvatarImage = Boolean(
+    pendingPreviewUrl || (serverAvatarUrl && !pendingAvatarRemoval),
+  );
   const avatarSrc =
     pendingPreviewUrl ?? avatarSrcForImg("self", serverAvatarUrl) ?? "";
   const initialsDisplay = initials.trim().toUpperCase().slice(0, 3) || "?";
@@ -385,15 +412,28 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
                       onChange={onPickAvatar}
                       disabled={saving}
                     />
-                    <button
-                      type="button"
-                      className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={saving || !uploadAvailable}
-                      data-testid="profile-upload-image"
-                    >
-                      Upload image
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={saving || !uploadAvailable}
+                        data-testid="profile-upload-image"
+                      >
+                        {showAvatarImage ? "Replace Image" : "Upload Image"}
+                      </button>
+                      {showAvatarImage ? (
+                        <button
+                          type="button"
+                          className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={onRemoveAvatarClick}
+                          disabled={saving}
+                          data-testid="profile-remove-image"
+                        >
+                          Remove Image
+                        </button>
+                      ) : null}
+                    </div>
                     <p className="mt-1 text-xs text-neutral-500">
                       {uploadAvailable
                         ? "Applied when you click Save."

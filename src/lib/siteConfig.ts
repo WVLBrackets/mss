@@ -21,6 +21,19 @@ const AUTH_MESSAGE_DEFAULTS = {
 
 type AuthMessageKey = keyof typeof AUTH_MESSAGE_DEFAULTS;
 
+/** Password-reset email body (optional rows in Config Sheet; defaults match prior hard-coded mail). */
+const PWRESET_EMAIL_DEFAULTS = {
+  pwreset_email_subject: "Reset your password",
+  pwreset_email_header: "Reset your password",
+  pwreset_email_greeting: "Hello, {Display Name}",
+  pwreset_email_message1: "We received a request to reset your account password.",
+  pwreset_email_message2:
+    "Reset password|{Tokenized password reset link}",
+  pwreset_email_footer: "Do not reply to this message.",
+} as const;
+
+type PwResetEmailKey = keyof typeof PWRESET_EMAIL_DEFAULTS;
+
 const CORE_REQUIRED_KEYS = [
   "site_name",
   "site_subtitle",
@@ -40,7 +53,8 @@ const CORE_REQUIRED_KEYS = [
 
 export type SiteConfigKey =
   | (typeof CORE_REQUIRED_KEYS)[number]
-  | AuthMessageKey;
+  | AuthMessageKey
+  | PwResetEmailKey;
 
 export type SiteConfig = Record<SiteConfigKey, string>;
 
@@ -346,6 +360,11 @@ function buildConfig(map: Map<string, string>): SiteConfig | SiteConfigFailure {
     const raw = map.get(key)?.trim();
     out[key] =
       raw && raw.length > 0 ? raw : AUTH_MESSAGE_DEFAULTS[key];
+  }
+  for (const key of Object.keys(PWRESET_EMAIL_DEFAULTS) as PwResetEmailKey[]) {
+    const raw = map.get(key)?.trim();
+    out[key] =
+      raw && raw.length > 0 ? raw : PWRESET_EMAIL_DEFAULTS[key];
   }
   return out as SiteConfig;
 }
