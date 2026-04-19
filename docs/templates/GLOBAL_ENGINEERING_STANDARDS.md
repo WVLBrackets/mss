@@ -2,7 +2,7 @@
 
 **Scope:** All web applications in this organization’s portfolio (Next.js / Vercel / Neon stack and aligned patterns).  
 **Created:** February 21, 2026  
-**Last Updated:** April 4, 2026 (Organization-wide scope; configuration standards; Base App alignment)  
+**Last Updated:** April 18, 2026 (Transactional email six-part standard; subject prefixes for non-production)  
 **Purpose:** Living document defining **how we implement solutions**—security, architecture, testing, APIs, and operational patterns teams should follow or consciously deviate from with Architect review.
 
 ---
@@ -118,7 +118,8 @@ const result = await sql`SELECT * FROM users WHERE id = ${userId}`;
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | **Nodemailer** | latest | SMTP email delivery |
-| **HTML Templates** | - | Email templates in `src/emails/` |
+| **Transactional layout** | - | Base App–style lifecycle mail: **six-part** sheet-driven pattern — see **[§9](#9-email--notifications)** and **[TRANSACTIONAL_EMAIL_STANDARD.md](TRANSACTIONAL_EMAIL_STANDARD.md)** |
+| **HTML file templates** | - | Optional for complex / attachment-heavy products (`src/emails/` or equivalent) |
 
 ---
 
@@ -1483,47 +1484,67 @@ async function getUser(id: string) { }  // Implicit return type
 
 ## 9. Email & Notifications
 
-### 9.1 Centralized Email Service (A)
+> **Detailed reference (checklist, config naming, code map):** **[docs/templates/TRANSACTIONAL_EMAIL_STANDARD.md](TRANSACTIONAL_EMAIL_STANDARD.md)**
 
-All email operations go through dedicated service modules:
+### 9.1 Centralized email delivery (A)
+
+- Route all SMTP sends through a **small number of service modules** (e.g. `src/lib/emailService.ts` in Base App–style products).
+- Use **runtime** reads for mail-related `process.env[...]` where the host strips Sensitive values at build time (see comments in the mail module).
 
 ```typescript
-import { sendConfirmationEmail } from '@/lib/emailService';
-import { sendSubmissionConfirmationEmail } from '@/lib/bracketEmailService';
+import { sendConfirmationEmail, sendPasswordResetEmail } from '@/lib/emailService';
+// Domain-specific products may additionally use bracketEmailService, etc.
 ```
 
 ---
 
-### 9.2 Email Templates (A)
+### 9.2 Transactional “six-part” emails (A) — **default for sheet-driven lifecycle mail**
 
-Store templates as HTML files in `src/emails/`:
+For **registration, password reset, duplicate-account**, and **future** transactional messages that are mostly copy + optional single CTA link:
 
-- `confirm.html` - Account confirmation
-- `reset.html` - Password reset
-- `email-submit.html` - Bracket submission confirmation
-- `email-pdf.html` - PDF attachment emails
+1. **Reuse the shared HTML layout** — `buildSixPartEmailHtml()` in `src/lib/sixPartTransactionalEmail.ts` (left-aligned body, `<h1>` header, breaks, 80% footer).
+2. **Drive copy from the Config Sheet** with a **fixed six-key family** per email type: `*_email_subject`, `*_email_header`, `*_email_greeting`, `*_email_message1`, `*_email_message2`, `*_email_footer` (defaults in code when rows are absent, where the product allows).
+3. **Greeting / body placeholders** — `resolveUserPlaceholders()` from `src/lib/configPlaceholders.ts` (`{Display Name}`, `{Full Name}`, `{email}`, `{Initials}`, `{name}`). When only the recipient address is known (e.g. duplicate signup), use **`placeholdersFromEmailAddress()`**.
+4. **Primary link row** — When the second body block is a CTA, use **`Label|{Tokenized …}`** and **`buildPipedLinkMessage2Html()`** with the appropriate token regex (confirmation vs password reset). Plain second blocks (no URL) stay a single escaped paragraph in the same layout.
+
+**Reminder:** Any **new** transactional email in this class should follow this pattern unless the Architect approves a documented exception.
 
 ---
 
-### 9.3 Async Email Processing (A)
+### 9.3 Non-production subject prefixes (A)
 
-Send emails asynchronously to avoid blocking responses:
+All subjects sent through the centralized mail service for Base App–style apps should use **`emailSubjectEnvironmentPrefix()`** (`src/lib/emailSubjectPrefix.ts`) so non-production mail is obvious in the inbox:
+
+| Environment | Subject prefix |
+|---------------|----------------|
+| **Production** | *(none)* |
+| **Vercel Preview** (staging / preview deploys) | `🟡 Staging 🟡 ` then the real subject |
+| **Local development** (e.g. Next dev, not Vercel production) | `🟠 Local 🟠 ` then the real subject |
+
+Alignment with **`getCurrentEnvironment()`** keeps subject badges consistent with DB and config tab selection.
+
+---
+
+### 9.4 File-based HTML templates (optional)
+
+Some products (e.g. large bracket / PDF flows) may keep **static HTML files** under `src/emails/` or equivalent for attachments and complex one-off layouts. That is **not** the default for **auth and strict Config Sheet lifecycle** email—use §9.2 instead.
+
+---
+
+### 9.5 Async email processing (A)
+
+Where the platform supports it, send email in a **non-blocking** way so HTTP responses are not held on SMTP latency (e.g. `waitUntil` / background continuation patterns as appropriate for the host).
 
 ```typescript
 const emailPromise = sendSubmissionConfirmationEmail(...);
-processEmailAsync(emailPromise);  // Uses Vercel's waitUntil
+processEmailAsync(emailPromise);  // Example: Vercel waitUntil
 ```
 
 ---
 
-### 9.4 Email Logging (A)
+### 9.6 Email logging (A)
 
-Log all email events to `email_logs` table:
-
-- Event type (sent, failed, bounced)
-- Destination email
-- Attachment status
-- Success/failure
+Where a product maintains delivery observability, log events (sent / failed / bounced), destination, and attachment status (e.g. `email_logs` table) per that product’s requirements.
 
 ---
 
@@ -1659,6 +1680,7 @@ Cache appropriate responses:
 | 2026-02-22 | **Test Updates:** Migrated E2E tests to use data-testid locators (sign-out.spec.ts, bracket-full-workflow.spec.ts, bracket-interaction.spec.ts); Added data-testid to Testing Checklist | QA Engineer |
 | 2026-02-22 | **Responsive Test ID Standard:** Formalized requirement for unique `-desktop` / `-mobile` suffixes on responsive elements; Updated test usage examples in Section 7.7 | QA Engineer |
 | 2026-04-04 | **Portfolio scope:** Document applies to all org applications; linked Base App Requirements + checklist; widened “How to Use” (apply relevant sections); configuration §10 rewritten—**no silent fallbacks** as standard; WMM fallbacks noted as optional future hardening; generalized architecture examples and module reference | Architect |
+| 2026-04-18 | **Email §9 rewritten:** Transactional **six-part** layout and Config Sheet key families as the default for lifecycle mail; **non-production subject prefixes** (🟡 Staging 🟡 / 🟠 Local 🟠); linked **[TRANSACTIONAL_EMAIL_STANDARD.md](TRANSACTIONAL_EMAIL_STANDARD.md)** for full detail and future-email reminder | Architect |
 
 ---
 
