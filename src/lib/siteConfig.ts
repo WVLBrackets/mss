@@ -34,6 +34,18 @@ const PWRESET_EMAIL_DEFAULTS = {
 
 type PwResetEmailKey = keyof typeof PWRESET_EMAIL_DEFAULTS;
 
+/** Registration confirmation email (optional rows in Config Sheet). */
+const REG_EMAIL_DEFAULTS = {
+  reg_email_subject: "Confirm your account",
+  reg_email_header: "Confirm your account",
+  reg_email_greeting: "Hello, {Display Name}",
+  reg_email_message1: "Please confirm your account using the link below.",
+  reg_email_message2: "Confirm email|{Tokenized confirmation link}",
+  reg_email_footer: "Do not reply to this message.",
+} as const;
+
+type RegEmailKey = keyof typeof REG_EMAIL_DEFAULTS;
+
 const CORE_REQUIRED_KEYS = [
   "site_name",
   "site_subtitle",
@@ -54,7 +66,8 @@ const CORE_REQUIRED_KEYS = [
 export type SiteConfigKey =
   | (typeof CORE_REQUIRED_KEYS)[number]
   | AuthMessageKey
-  | PwResetEmailKey;
+  | PwResetEmailKey
+  | RegEmailKey;
 
 export type SiteConfig = Record<SiteConfigKey, string>;
 
@@ -365,6 +378,11 @@ function buildConfig(map: Map<string, string>): SiteConfig | SiteConfigFailure {
     const raw = map.get(key)?.trim();
     out[key] =
       raw && raw.length > 0 ? raw : PWRESET_EMAIL_DEFAULTS[key];
+  }
+  for (const key of Object.keys(REG_EMAIL_DEFAULTS) as RegEmailKey[]) {
+    const raw = map.get(key)?.trim();
+    out[key] =
+      raw && raw.length > 0 ? raw : REG_EMAIL_DEFAULTS[key];
   }
   return out as SiteConfig;
 }

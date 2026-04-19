@@ -11,6 +11,10 @@ import {
 } from "@/lib/emailService";
 import { loadSiteConfig, isSiteConfigError } from "@/lib/siteConfig";
 import { successResponse, ApiErrors } from "@/lib/api/responses";
+import {
+  defaultDisplayName,
+  defaultInitialsFromDisplay,
+} from "@/lib/profileDefaults";
 
 export async function POST(request: Request) {
   try {
@@ -63,8 +67,22 @@ export async function POST(request: Request) {
     const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
     const confirmUrl = `${base.replace(/\/$/, "")}/api/auth/confirm?token=${encodeURIComponent(token)}`;
 
+    const nameTrimmed = body.name.trim();
+    const displayName = defaultDisplayName(nameTrimmed);
+    const initials = defaultInitialsFromDisplay(displayName).slice(0, 3);
+
     try {
-      await sendConfirmationEmail(body.email.trim(), body.name.trim(), confirmUrl);
+      await sendConfirmationEmail(
+        body.email.trim(),
+        cfg,
+        {
+          fullName: nameTrimmed,
+          displayName,
+          initials,
+          email: body.email.trim().toLowerCase(),
+        },
+        confirmUrl,
+      );
     } catch (mailErr) {
       console.error("[register] email failed", mailErr);
       return ApiErrors.serverError();
