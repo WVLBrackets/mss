@@ -196,14 +196,57 @@ function validateSiteLogo(value: string, key: SiteConfigKey): SiteConfigFailure 
 
 const EMAIL_CONTACT_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Zero-width / BOM characters that often sneak in from copy-paste or CSV. */
+const INVISIBLE_EMAIL_JUNK = /[\u200b-\u200d\ufeff]/g;
+
 /**
- * Normalizes footer contact email from the sheet: trim, strip BOM, optional CSV
- * wrapping quotes, and extract `addr@domain` from `Display Name <addr@domain>`.
+ * Common wrapping quote pairs (ASCII + typographic). Sheets and paste often
+ * produce “curly” quotes that are not stripped by CSV parsers as field delimiters.
+ */
+const EMAIL_WRAPPING_QUOTE_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ['"', '"'],
+  ["'", "'"],
+  ["\u201c", "\u201d"], // “ ”
+  ["\u2018", "\u2019"], // ‘ ’
+  ["\u00ab", "\u00bb"], // « »
+  ["\u201e", "\u201d"], // „ ”
+  ["\u201a", "\u2019"], // ‚ ’
+];
+
+/**
+ * Removes paired wrapping quotes from both ends until stable (handles nested CSV-style quotes).
+ */
+function stripEmailWrappingQuotes(v: string): string {
+  let s = v.trim();
+  for (;;) {
+    let changed = false;
+    for (const [open, close] of EMAIL_WRAPPING_QUOTE_PAIRS) {
+      if (s.length >= 2 && s.startsWith(open) && s.endsWith(close)) {
+        let inner = s.slice(open.length, s.length - close.length);
+        if (open === '"' && close === '"') {
+          inner = inner.replace(/""/g, '"');
+        }
+        s = inner.trim();
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return s;
+}
+
+/**
+ * Normalizes footer contact email from the sheet: trim, strip BOM and
+ * zero-width characters, optional wrapping quotes (ASCII and typographic),
+ * optional `mailto:` prefix, and extract `addr@domain` from `Display Name <addr@domain>`.
  */
 function normalizeEmailContactAddress(raw: string): string {
-  let v = raw.trim().replace(/^\ufeff/, "");
-  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) {
-    v = v.slice(1, -1).replace(/""/g, '"').trim();
+  let v = raw.trim().replace(/^\ufeff/, "").replace(INVISIBLE_EMAIL_JUNK, "");
+  v = stripEmailWrappingQuotes(v);
+  const mailto = v.toLowerCase();
+  if (mailto.startsWith("mailto:")) {
+    v = v.slice("mailto:".length).trim();
+    v = stripEmailWrappingQuotes(v);
   }
   const angle = v.match(/<(\s*[^\s<]+@[^\s>]+\.[^\s>]+\s*)>/);
   if (angle?.[1]) {
@@ -221,7 +264,7 @@ function validateEmailContact(value: string, key: SiteConfigKey): SiteConfigFail
       reason: "invalid_type",
       key,
       detail:
-        "email_contact_address must be a valid email (plain address or \"Name <addr@domain.com>\"). Check for stray quotes, spaces, or CSV truncation.",
+        "email_contact_address must be a valid email (plain address or \"Name <addr@domain.com>\"). Check for typographic (“curly”) quotes, stray ASCII quotes, spaces, or CSV truncation.",
     };
   }
   return null;
