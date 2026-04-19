@@ -18,6 +18,8 @@ interface Row {
   lastLogin: string | null;
 }
 
+const SEARCH_DEBOUNCE_MS = 350;
+
 export function UsersAdminTab() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,13 @@ export function UsersAdminTab() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [pwdUser, setPwdUser] = useState<Row | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -144,20 +153,12 @@ export function UsersAdminTab() {
           Protect confirmed
         </label>
         <input
-          className="rounded border border-neutral-300 px-2 py-1 text-sm"
+          className="min-w-[12rem] rounded border border-neutral-300 px-2 py-1 text-sm"
           placeholder="Search…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           data-testid="admin-users-search"
         />
-        <button
-          type="button"
-          className="rounded border border-neutral-300 px-3 py-1.5 text-sm"
-          onClick={() => setSearch(searchInput)}
-          data-testid="admin-users-search-apply"
-        >
-          Apply search
-        </button>
         <button
           type="button"
           className="rounded bg-red-600 px-3 py-1.5 text-sm text-white disabled:opacity-40"
@@ -218,31 +219,60 @@ export function UsersAdminTab() {
                   <td className="p-2 text-neutral-600">
                     {r.lastLogin ? new Date(r.lastLogin).toLocaleString() : "Never"}
                   </td>
-                  <td className="p-2">
-                    <div className="flex flex-wrap items-center gap-1">
-                      <AdminActionIconButton
-                        label="Edit"
-                        onClick={() => {
-                          clearPendingDelete();
-                          setEditing(r);
-                        }}
-                        data-testid={`admin-user-edit-${r.id}`}
+                  <td className="p-2 align-top">
+                    {pendingDeleteId === r.id ? (
+                      <div
+                        className="inline-grid w-[5.5rem] gap-1.5 rounded border border-red-200 bg-red-50 p-2 text-center"
+                        data-testid={`admin-user-delete-confirm-${r.id}`}
                       >
-                        <Pencil className="h-4 w-4" aria-hidden />
-                      </AdminActionIconButton>
-                      <AdminActionIconButton
-                        label="Change Password"
-                        onClick={() => {
-                          clearPendingDelete();
-                          setPwdUser(r);
-                        }}
-                        data-testid={`admin-user-password-${r.id}`}
-                      >
-                        <KeyRound className="h-4 w-4" aria-hidden />
-                      </AdminActionIconButton>
-                      {!r.emailConfirmed ? (
+                        <span className="col-span-2 text-[11px] leading-tight text-red-900">
+                          Delete this user?
+                        </span>
+                        <button
+                          type="button"
+                          className="rounded border border-neutral-300 bg-white px-1 py-1 text-[11px] font-medium text-neutral-800 hover:bg-neutral-50"
+                          onClick={clearPendingDelete}
+                          data-testid={`admin-user-delete-cancel-${r.id}`}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded border border-red-600 bg-red-600 px-1 py-1 text-[11px] font-medium text-white hover:bg-red-700"
+                          onClick={() => void executeDeleteUser(r.id)}
+                          data-testid={`admin-user-delete-confirm-yes-${r.id}`}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="inline-grid grid-cols-2 gap-1.5">
                         <AdminActionIconButton
-                          label="Confirm"
+                          variant="edit"
+                          label="Edit"
+                          onClick={() => {
+                            clearPendingDelete();
+                            setEditing(r);
+                          }}
+                          data-testid={`admin-user-edit-${r.id}`}
+                        >
+                          <Pencil className="h-4 w-4" aria-hidden />
+                        </AdminActionIconButton>
+                        <AdminActionIconButton
+                          variant="password"
+                          label="Change Password"
+                          onClick={() => {
+                            clearPendingDelete();
+                            setPwdUser(r);
+                          }}
+                          data-testid={`admin-user-password-${r.id}`}
+                        >
+                          <KeyRound className="h-4 w-4" aria-hidden />
+                        </AdminActionIconButton>
+                        <AdminActionIconButton
+                          variant="confirm"
+                          label={r.emailConfirmed ? "Already confirmed" : "Confirm email"}
+                          disabled={r.emailConfirmed}
                           onClick={() => {
                             clearPendingDelete();
                             void confirmUser(r.id);
@@ -251,41 +281,16 @@ export function UsersAdminTab() {
                         >
                           <CheckCircle2 className="h-4 w-4" aria-hidden />
                         </AdminActionIconButton>
-                      ) : null}
-                      {pendingDeleteId === r.id ? (
-                        <div
-                          className="ml-1 flex max-w-[200px] flex-wrap items-center gap-1 border-l border-neutral-200 pl-2"
-                          data-testid={`admin-user-delete-confirm-${r.id}`}
-                        >
-                          <span className="text-xs text-neutral-600">Delete this user?</span>
-                          <button
-                            type="button"
-                            className="rounded border border-neutral-300 px-2 py-0.5 text-xs font-medium text-neutral-800 hover:bg-neutral-50"
-                            onClick={clearPendingDelete}
-                            data-testid={`admin-user-delete-cancel-${r.id}`}
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded border border-red-300 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-800 hover:bg-red-100"
-                            onClick={() => void executeDeleteUser(r.id)}
-                            data-testid={`admin-user-delete-confirm-yes-${r.id}`}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      ) : (
                         <AdminActionIconButton
+                          variant="delete"
                           label="Delete"
-                          variant="danger"
                           onClick={() => setPendingDeleteId(r.id)}
                           data-testid={`admin-user-delete-${r.id}`}
                         >
                           <Trash2 className="h-4 w-4" aria-hidden />
                         </AdminActionIconButton>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))
@@ -318,36 +323,55 @@ export function UsersAdminTab() {
   );
 }
 
+type AdminActionVariant = "edit" | "password" | "confirm" | "delete";
+
 type AdminActionIconButtonProps = {
   label: string;
   onClick: () => void;
-  variant?: "default" | "danger";
+  variant: AdminActionVariant;
+  disabled?: boolean;
   children: React.ReactNode;
   "data-testid"?: string;
 };
 
+const ACTION_VARIANT_CLASS: Record<AdminActionVariant, string> = {
+  edit: "border-blue-700 bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
+  password:
+    "border-amber-500 bg-amber-400 text-amber-950 hover:bg-amber-500 focus:ring-amber-400",
+  confirm:
+    "border-emerald-700 bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500",
+  delete: "border-red-700 bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
+};
+
+const ACTION_CONFIRM_DISABLED =
+  "cursor-not-allowed border-emerald-300 bg-emerald-200/90 text-emerald-900 opacity-70 hover:bg-emerald-200/90";
+
 /**
- * Small square icon button; `label` is shown on hover (`title`) and exposed to assistive tech.
+ * Small square icon button for admin row actions; `label` is `title` + `aria-label`.
  */
 function AdminActionIconButton({
   label,
   onClick,
-  variant = "default",
+  variant,
+  disabled = false,
   children,
   "data-testid": dataTestId,
 }: AdminActionIconButtonProps) {
   const base =
-    "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border text-neutral-700 transition hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-1";
-  const danger =
-    "border-red-200 text-red-700 hover:bg-red-50 focus:ring-red-400";
+    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded border text-sm transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:pointer-events-none";
+  const color =
+    disabled && variant === "confirm"
+      ? ACTION_CONFIRM_DISABLED
+      : ACTION_VARIANT_CLASS[variant];
   return (
     <button
       type="button"
       title={label}
       aria-label={label}
+      disabled={disabled}
       onClick={onClick}
       data-testid={dataTestId}
-      className={`${base} ${variant === "danger" ? danger : "border-neutral-300"}`}
+      className={`${base} ${color}`}
     >
       {children}
     </button>
