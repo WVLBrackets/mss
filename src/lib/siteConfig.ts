@@ -196,14 +196,32 @@ function validateSiteLogo(value: string, key: SiteConfigKey): SiteConfigFailure 
 
 const EMAIL_CONTACT_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Normalizes footer contact email from the sheet: trim, strip BOM, optional CSV
+ * wrapping quotes, and extract `addr@domain` from `Display Name <addr@domain>`.
+ */
+function normalizeEmailContactAddress(raw: string): string {
+  let v = raw.trim().replace(/^\ufeff/, "");
+  if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) {
+    v = v.slice(1, -1).replace(/""/g, '"').trim();
+  }
+  const angle = v.match(/<(\s*[^\s<]+@[^\s>]+\.[^\s>]+\s*)>/);
+  if (angle?.[1]) {
+    return angle[1].trim().replace(/,\s*$/, "");
+  }
+  return v.trim().replace(/,\s*$/, "");
+}
+
 function validateEmailContact(value: string, key: SiteConfigKey): SiteConfigFailure | null {
   if (key !== "email_contact_address") return null;
-  if (!EMAIL_CONTACT_RE.test(value.trim())) {
+  const norm = normalizeEmailContactAddress(value);
+  if (!EMAIL_CONTACT_RE.test(norm)) {
     return {
       kind: "config_error",
       reason: "invalid_type",
       key,
-      detail: "email_contact_address must be a valid email",
+      detail:
+        "email_contact_address must be a valid email (plain address or \"Name <addr@domain.com>\"). Check for stray quotes, spaces, or CSV truncation.",
     };
   }
   return null;
@@ -271,7 +289,12 @@ function buildConfig(map: Map<string, string>): SiteConfig | SiteConfigFailure {
     }
     const err = validateValue(key, val);
     if (err) return err;
-    out[key] = key === "site_logo" ? normalizeSiteLogoPath(val) : val;
+    out[key] =
+      key === "site_logo"
+        ? normalizeSiteLogoPath(val)
+        : key === "email_contact_address"
+          ? normalizeEmailContactAddress(val)
+          : val;
   }
   for (const key of Object.keys(AUTH_MESSAGE_DEFAULTS) as AuthMessageKey[]) {
     const raw = map.get(key)?.trim();

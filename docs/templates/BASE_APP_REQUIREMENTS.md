@@ -188,7 +188,7 @@ Every row exists on **both** `PROD` and `STAGE` tabs unless noted. **All listed 
 | `acct_confirm_success_button1` | string | `Label` + `\|` + `/path` or `https://…` (required; not `X`); label may include user placeholders |
 | `acct_confirm_success_button2` | string | Same format as button1, or `X` to hide second button |
 | `footer_text` | string | Left column of global footer (e.g. copyright line) |
-| `email_contact_address` | email string | `mailto` target for footer “Contact Us” |
+| `email_contact_address` | email string | `mailto` target for footer “Contact Us”. Plain `addr@domain.com` or `Name <addr@domain.com>`; CSV quotes and a trailing comma are tolerated. |
 | `welcome_greeting_logged_in` | string | Home greeting when signed in; user placeholders resolved from DB user when available, else session |
 | `welcome_greeting_logged_out` | string | Home greeting when not signed in; user placeholders use guest fallbacks (`Guest`, `?`) |
 
