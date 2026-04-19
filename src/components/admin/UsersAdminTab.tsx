@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CheckCircle2, KeyRound, Pencil, Trash2 } from "lucide-react";
 import { fetchWithCsrf } from "@/lib/fetchWithCsrf";
 import { avatarSrcForImg } from "@/lib/blobAvatar";
 
@@ -27,6 +28,7 @@ export function UsersAdminTab() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Row | null>(null);
   const [pwdUser, setPwdUser] = useState<Row | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,6 +44,7 @@ export function UsersAdminTab() {
       }
       setRows(json.data as Row[]);
       setSelected(new Set());
+      setPendingDeleteId(null);
     } finally {
       setLoading(false);
     }
@@ -93,8 +96,7 @@ export function UsersAdminTab() {
     await load();
   }
 
-  async function deleteOne(id: string) {
-    if (!confirm("Delete this user?")) return;
+  async function executeDeleteUser(id: string) {
     const q = protectConfirmed ? "?protect_confirmed=1" : "";
     const res = await fetchWithCsrf(`/api/admin/users/${id}${q}`, {
       method: "DELETE",
@@ -104,7 +106,12 @@ export function UsersAdminTab() {
       alert(j.error ?? "Delete failed");
       return;
     }
+    setPendingDeleteId(null);
     await load();
+  }
+
+  function clearPendingDelete() {
+    setPendingDeleteId(null);
   }
 
   return (
@@ -171,7 +178,7 @@ export function UsersAdminTab() {
               <th className="p-2">Role</th>
               <th className="p-2">Created</th>
               <th className="p-2">Last login</th>
-              <th className="p-2">Actions</th>
+              <th className="w-[1%] whitespace-nowrap p-2">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -211,41 +218,74 @@ export function UsersAdminTab() {
                   <td className="p-2 text-neutral-600">
                     {r.lastLogin ? new Date(r.lastLogin).toLocaleString() : "Never"}
                   </td>
-                  <td className="space-x-1 p-2">
-                    {!r.emailConfirmed ? (
-                      <button
-                        type="button"
-                        className="text-xs text-blue-600 underline"
-                        onClick={() => void confirmUser(r.id)}
-                        data-testid={`admin-user-confirm-${r.id}`}
+                  <td className="p-2">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <AdminActionIconButton
+                        label="Edit"
+                        onClick={() => {
+                          clearPendingDelete();
+                          setEditing(r);
+                        }}
+                        data-testid={`admin-user-edit-${r.id}`}
                       >
-                        Confirm
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="text-xs text-blue-600 underline"
-                      onClick={() => setEditing(r)}
-                      data-testid={`admin-user-edit-${r.id}`}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs text-blue-600 underline"
-                      onClick={() => setPwdUser(r)}
-                      data-testid={`admin-user-password-${r.id}`}
-                    >
-                      Password
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs text-red-600 underline"
-                      onClick={() => void deleteOne(r.id)}
-                      data-testid={`admin-user-delete-${r.id}`}
-                    >
-                      Delete
-                    </button>
+                        <Pencil className="h-4 w-4" aria-hidden />
+                      </AdminActionIconButton>
+                      <AdminActionIconButton
+                        label="Change Password"
+                        onClick={() => {
+                          clearPendingDelete();
+                          setPwdUser(r);
+                        }}
+                        data-testid={`admin-user-password-${r.id}`}
+                      >
+                        <KeyRound className="h-4 w-4" aria-hidden />
+                      </AdminActionIconButton>
+                      {!r.emailConfirmed ? (
+                        <AdminActionIconButton
+                          label="Confirm"
+                          onClick={() => {
+                            clearPendingDelete();
+                            void confirmUser(r.id);
+                          }}
+                          data-testid={`admin-user-confirm-${r.id}`}
+                        >
+                          <CheckCircle2 className="h-4 w-4" aria-hidden />
+                        </AdminActionIconButton>
+                      ) : null}
+                      {pendingDeleteId === r.id ? (
+                        <div
+                          className="ml-1 flex max-w-[200px] flex-wrap items-center gap-1 border-l border-neutral-200 pl-2"
+                          data-testid={`admin-user-delete-confirm-${r.id}`}
+                        >
+                          <span className="text-xs text-neutral-600">Delete this user?</span>
+                          <button
+                            type="button"
+                            className="rounded border border-neutral-300 px-2 py-0.5 text-xs font-medium text-neutral-800 hover:bg-neutral-50"
+                            onClick={clearPendingDelete}
+                            data-testid={`admin-user-delete-cancel-${r.id}`}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded border border-red-300 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-800 hover:bg-red-100"
+                            onClick={() => void executeDeleteUser(r.id)}
+                            data-testid={`admin-user-delete-confirm-yes-${r.id}`}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : (
+                        <AdminActionIconButton
+                          label="Delete"
+                          variant="danger"
+                          onClick={() => setPendingDeleteId(r.id)}
+                          data-testid={`admin-user-delete-${r.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                        </AdminActionIconButton>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -275,6 +315,42 @@ export function UsersAdminTab() {
         />
       ) : null}
     </div>
+  );
+}
+
+type AdminActionIconButtonProps = {
+  label: string;
+  onClick: () => void;
+  variant?: "default" | "danger";
+  children: React.ReactNode;
+  "data-testid"?: string;
+};
+
+/**
+ * Small square icon button; `label` is shown on hover (`title`) and exposed to assistive tech.
+ */
+function AdminActionIconButton({
+  label,
+  onClick,
+  variant = "default",
+  children,
+  "data-testid": dataTestId,
+}: AdminActionIconButtonProps) {
+  const base =
+    "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border text-neutral-700 transition hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-1";
+  const danger =
+    "border-red-200 text-red-700 hover:bg-red-50 focus:ring-red-400";
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      data-testid={dataTestId}
+      className={`${base} ${variant === "danger" ? danger : "border-neutral-300"}`}
+    >
+      {children}
+    </button>
   );
 }
 

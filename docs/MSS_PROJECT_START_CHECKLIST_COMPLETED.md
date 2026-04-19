@@ -264,6 +264,14 @@ Use this if a connection string was **posted somewhere unsafe** (chat, ticket, s
    | `site_logo` | `site/logo.svg` (path under **`public/`**; repo includes `public/site/logo.svg`) |
    | `signin_welcome` | `Welcome. Sign in below.` (optional: `{Full Name}`, `{Display Name}`, `{Initials}` — guest fallbacks when not signed in) |
    | `signup_welcome` | `Create an account to get started.` (same placeholders) |
+   | `password_reset_message` | e.g. `If an account exists, password reset instructions were sent.` |
+   | `sign_up_confirm` | e.g. `Check your email to confirm your account.` (shown for new signup and duplicate-email signup) |
+   | `dup_email_subject` | e.g. `Account request` |
+   | `dup_email_header` | e.g. `We received a request` |
+   | `dup_email_greeting` | Short greeting line |
+   | `dup_email_message1` | First body paragraph |
+   | `dup_email_message2` | Second body paragraph |
+   | `dup_email_footer` | e.g. `Do not reply to this message.` |
    | `profile_hover` | `Open your profile` or e.g. `{Display Name}` — resolved from session when signed in |
    | `acct_confirm_success_header` | e.g. `You're all set` |
    | `acct_confirm_success_message1` | e.g. `Your account is confirmed.` |

@@ -396,7 +396,7 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
                     </button>
                     <p className="mt-1 text-xs text-neutral-500">
                       {uploadAvailable
-                        ? "Applied when you click Save. If the Vercel Blob store is private, set BLOB_ACCESS=private for this deployment."
+                        ? "Applied when you click Save."
                         : "Uploads require BLOB_READ_WRITE_TOKEN in Vercel for this environment."}
                     </p>
                   </div>

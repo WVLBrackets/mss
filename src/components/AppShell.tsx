@@ -59,7 +59,7 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
                 className="flex items-center gap-1 text-sm font-medium text-neutral-700 hover:text-neutral-900"
                 data-testid="login-link"
               >
-                <span>Login</span>
+                <span>Profile</span>
                 <UserCircle className="h-6 w-6" aria-hidden />
               </Link>
             ) : (

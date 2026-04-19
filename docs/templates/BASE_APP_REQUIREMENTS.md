@@ -123,9 +123,10 @@ Detection must align with how `APP_ENV` / `VERCEL_ENV` are set (document in chec
 
 - Two modes on one page (tabs or toggle): **Sign in** | **Create account**.
 - Link: **Forgot password** → existing forgot-password flow.
-- **Welcome / footer copy:**
-  - Sign-in mode: body/footer text from Config key `signin_welcome` (required, support multi-line via sheet convention e.g. `||` for line breaks if you document it).
+- **Welcome / footer copy** (rendered **below** the form, not inside it):
+  - Sign-in mode: from Config key `signin_welcome` (required; multi-line as stored in the sheet).
   - Create-account mode: from `signup_welcome` (required).
+  - After forgot-password submit: `password_reset_message`. After signup (including duplicate email): `sign_up_confirm`.
 
 ### 5.2 Create account fields
 
@@ -171,8 +172,16 @@ Every row exists on **both** `PROD` and `STAGE` tabs unless noted. **All listed 
 | `site_name` | string | App title in nav |
 | `site_subtitle` | string | Subtitle under title in nav |
 | `site_logo` | path string | File under `public/` (e.g. `site/logo.svg`), served at `/{path}` |
-| `signin_welcome` | string | HTML-safe or plain text; sign-in panel footer (see user placeholders below) |
-| `signup_welcome` | string | Create-account panel footer (same placeholders; guest fallbacks when not signed in) |
+| `signin_welcome` | string | HTML-safe or plain text; below the sign-in form (see user placeholders below) |
+| `signup_welcome` | string | Below the create-account form (same placeholders; guest fallbacks when not signed in) |
+| `password_reset_message` | string | Shown on forgot-password after submit (same response whether or not the email exists) |
+| `sign_up_confirm` | string | Inline message after successful **or** duplicate-email signup (do not reveal that the email exists) |
+| `dup_email_subject` | string | Subject for email sent when signup uses an email that is already registered |
+| `dup_email_header` | string | Main heading inside that duplicate-email email |
+| `dup_email_greeting` | string | Body line 1 (then line break before next block) |
+| `dup_email_message1` | string | Body paragraph 1 |
+| `dup_email_message2` | string | Body paragraph 2 (then line break before footer) |
+| `dup_email_footer` | string | Footer line(s), centered in the HTML email |
 | `profile_hover` | string | Tooltip on logged-in avatar (placeholders use the signed-in session user) |
 | `acct_confirm_success_header` | string | Heading after email confirmation (placeholders use the new session after handoff sign-in) |
 | `acct_confirm_success_message1` | string | Body copy on confirmation success page |

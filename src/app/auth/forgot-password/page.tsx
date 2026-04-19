@@ -25,7 +25,11 @@ export default function ForgotPasswordPage() {
         setError(data.error ?? "Request failed");
         return;
       }
-      setMessage(data.message ?? "If an account exists, instructions were sent.");
+      setMessage(
+        typeof data.message === "string" && data.message.trim()
+          ? data.message
+          : "Request received.",
+      );
     } finally {
       setBusy(false);
     }
@@ -50,7 +54,7 @@ export default function ForgotPasswordPage() {
         {message ? <p className="text-sm text-green-700">{message}</p> : null}
         <button
           type="submit"
-          className="w-full rounded bg-neutral-900 py-2 text-sm text-white disabled:opacity-50"
+          className="w-full cursor-pointer rounded bg-neutral-900 py-2 text-sm text-white disabled:opacity-50"
           disabled={busy}
           data-testid="forgot-submit"
         >

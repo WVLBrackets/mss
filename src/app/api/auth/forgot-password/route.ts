@@ -5,6 +5,7 @@ import { getUserByEmail, setResetToken } from "@/lib/repositories/userRepository
 import { generateSecureToken } from "@/lib/services/tokenService";
 import { TokenExpiration } from "@/lib/constants";
 import { sendPasswordResetEmail } from "@/lib/emailService";
+import { loadSiteConfig, isSiteConfigError } from "@/lib/siteConfig";
 import { successResponse, ApiErrors } from "@/lib/api/responses";
 
 export async function POST(request: Request) {
@@ -19,6 +20,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     const ev = validateEmail(body.email);
     if (!ev.valid) return ApiErrors.validationError(ev.error!);
+
+    const cfg = await loadSiteConfig();
+    if (isSiteConfigError(cfg)) {
+      return ApiErrors.serverError();
+    }
 
     const env = getCurrentEnvironment();
     const user = await getUserByEmail(body.email, env);
@@ -35,10 +41,7 @@ export async function POST(request: Request) {
         return ApiErrors.serverError();
       }
     }
-    return successResponse(
-      { ok: true },
-      "If an account exists, password reset instructions were sent.",
-    );
+    return successResponse({ ok: true }, cfg.password_reset_message);
   } catch (e) {
     console.error("[forgot-password]", e);
     return ApiErrors.serverError();

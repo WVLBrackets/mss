@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { rateLimitMiddleware, RATE_LIMITS } from "@/lib/rateLimit";
 import { getCurrentEnvironment } from "@/lib/appEnvironment";
 import { validateRegistration } from "@/lib/validation/validators";
@@ -6,7 +5,11 @@ import { hashPassword } from "@/lib/services/authService";
 import { generateSecureToken } from "@/lib/services/tokenService";
 import { createUser, getUserByEmail } from "@/lib/repositories/userRepository";
 import { TokenExpiration } from "@/lib/constants";
-import { sendConfirmationEmail } from "@/lib/emailService";
+import {
+  sendConfirmationEmail,
+  sendDuplicateRegistrationEmail,
+} from "@/lib/emailService";
+import { loadSiteConfig, isSiteConfigError } from "@/lib/siteConfig";
 import { successResponse, ApiErrors } from "@/lib/api/responses";
 
 export async function POST(request: Request) {
@@ -27,13 +30,21 @@ export async function POST(request: Request) {
     });
     if (!v.valid) return ApiErrors.validationError(v.error!);
 
+    const cfg = await loadSiteConfig();
+    if (isSiteConfigError(cfg)) {
+      return ApiErrors.serverError();
+    }
+
     const env = getCurrentEnvironment();
     const existing = await getUserByEmail(body.email, env);
     if (existing) {
-      return NextResponse.json(
-        { success: false, error: "An account with this email already exists", code: "CONFLICT" },
-        { status: 409 },
-      );
+      try {
+        await sendDuplicateRegistrationEmail(body.email.trim(), cfg);
+      } catch (mailErr) {
+        console.error("[register] duplicate email send failed", mailErr);
+        return ApiErrors.serverError();
+      }
+      return successResponse({ sent: true, duplicate: true }, cfg.sign_up_confirm);
     }
 
     const passwordHash = await hashPassword(body.password);
@@ -59,7 +70,7 @@ export async function POST(request: Request) {
       return ApiErrors.serverError();
     }
 
-    return successResponse({ sent: true }, "Check your email to confirm your account.");
+    return successResponse({ sent: true }, cfg.sign_up_confirm);
   } catch (e) {
     console.error("[register]", e);
     return ApiErrors.serverError();
