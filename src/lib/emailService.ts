@@ -69,15 +69,15 @@ function buildPwResetMessage2Html(raw: string, resetUrl: string): string {
   const pipe = trimmed.indexOf("|");
   if (pipe === -1) {
     const href = escapeHtmlAttributeUrl(resetUrl);
-    return `<p style="margin:0">${escapeHtml(trimmed)}</p><p style="margin:0.75rem 0 0"><a href="${href}">${escapeHtml("Reset password")}</a></p>`;
+    return `<p style="margin:0;text-align:left">${escapeHtml(trimmed)}</p><p style="margin:0.75rem 0 0;text-align:left"><a href="${href}">${escapeHtml("Reset password")}</a></p>`;
   }
   const linkText = trimmed.slice(0, pipe).trim();
   const afterPipe = trimmed.slice(pipe + 1).trim();
   if (!TOKENIZED_PW_RESET_LINK.test(afterPipe)) {
-    return `<p style="margin:0">${escapeHtml(trimmed)}</p>`;
+    return `<p style="margin:0;text-align:left">${escapeHtml(trimmed)}</p>`;
   }
   const href = escapeHtmlAttributeUrl(resetUrl);
-  return `<p style="margin:0"><a href="${href}">${escapeHtml(linkText)}</a></p>`;
+  return `<p style="margin:0;text-align:left"><a href="${href}">${escapeHtml(linkText)}</a></p>`;
 }
 
 /**
@@ -100,16 +100,16 @@ export async function sendPasswordResetEmail(
   const transport = getTransport();
   const greeting = resolveUserPlaceholders(cfg.pwreset_email_greeting, placeholders);
   const html = `
-<div style="max-width:560px;margin:0 auto;font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#111">
-  <h1 style="font-size:1.25rem;font-weight:600;margin:0">${escapeHtml(cfg.pwreset_email_header)}</h1>
+<div style="max-width:560px;margin:0;font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#111;text-align:left">
+  <h1 style="font-size:1.25rem;font-weight:600;margin:0;text-align:left">${escapeHtml(cfg.pwreset_email_header)}</h1>
   <br /><br />
-  <p style="margin:0">${escapeHtml(greeting)}</p>
+  <p style="margin:0;text-align:left">${escapeHtml(greeting)}</p>
   <br />
-  <p style="margin:0">${escapeHtml(cfg.pwreset_email_message1)}</p>
+  <p style="margin:0;text-align:left">${escapeHtml(cfg.pwreset_email_message1)}</p>
   <br />
   ${buildPwResetMessage2Html(cfg.pwreset_email_message2, resetUrl)}
   <br /><br />
-  <div style="text-align:center;font-size:80%;">${escapeHtml(cfg.pwreset_email_footer)}</div>
+  <div style="text-align:left;font-size:80%;">${escapeHtml(cfg.pwreset_email_footer)}</div>
 </div>`.trim();
   await transport.sendMail({
     from: fromAddress(),
