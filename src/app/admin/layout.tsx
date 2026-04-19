@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getAuthSession } from "@/lib/auth";
 import { isSessionAdmin } from "@/lib/adminAuth";
 
@@ -9,7 +9,7 @@ export default async function AdminLayout({
 }) {
   const session = await getAuthSession();
   if (!(await isSessionAdmin(session))) {
-    redirect("/auth/signin?error=forbidden");
+    notFound();
   }
   return <div>{children}</div>;
 }

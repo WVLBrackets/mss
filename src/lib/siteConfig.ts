@@ -343,11 +343,47 @@ function validateNavButton(
   return null;
 }
 
+/**
+ * `profile_hover` in the Config Sheet: tooltip for unlocked users, then `|`, then tooltip
+ * for locked users. Without `|`, the same text is used for both (legacy).
+ */
+export function parseProfileHover(raw: string): { unlocked: string; locked: string } {
+  const t = raw.trim();
+  const i = t.indexOf("|");
+  if (i === -1) return { unlocked: t, locked: t };
+  const unlocked = t.slice(0, i).trim();
+  const locked = t.slice(i + 1).trim();
+  return {
+    unlocked: unlocked || t,
+    locked: locked || unlocked || t,
+  };
+}
+
+function validateProfileHover(value: string, key: SiteConfigKey): SiteConfigFailure | null {
+  if (key !== "profile_hover") return null;
+  const t = value.trim();
+  const i = t.indexOf("|");
+  if (i === -1) return null;
+  const unlocked = t.slice(0, i).trim();
+  const locked = t.slice(i + 1).trim();
+  if (!unlocked || !locked) {
+    return {
+      kind: "config_error",
+      reason: "invalid_type",
+      key,
+      detail:
+        "profile_hover must be two non-empty strings separated by | (unlocked hover|locked hover)",
+    };
+  }
+  return null;
+}
+
 function validateValue(key: SiteConfigKey, val: string): SiteConfigFailure | null {
   return (
     validateSiteLogo(val, key) ??
     validateEmailContact(val, key) ??
-    validateNavButton(val, key, key === "acct_confirm_success_button2")
+    validateNavButton(val, key, key === "acct_confirm_success_button2") ??
+    validateProfileHover(val, key)
   );
 }
 

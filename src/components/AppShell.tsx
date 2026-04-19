@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Home, Shield, UserCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   placeholdersFromSessionUser,
   resolveUserPlaceholders,
 } from "@/lib/configPlaceholders";
-import { publicAssetUrl, type SiteConfig } from "@/lib/siteConfig";
+import { parseProfileHover, publicAssetUrl, type SiteConfig } from "@/lib/siteConfig";
 import { EnvironmentBanner } from "@/components/EnvironmentBanner";
 import { ProfileModal } from "@/components/ProfileModal";
 import { SiteFooter, type DeploymentFooterMeta } from "@/components/SiteFooter";
@@ -32,9 +32,14 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
   const isAuthed = status === "authenticated";
   const profileLocked = Boolean(session?.user?.profileLocked);
 
-  useEffect(() => {
-    if (profileLocked && profileOpen) setProfileOpen(false);
-  }, [profileLocked, profileOpen]);
+  const profileHoverResolved = useMemo(() => {
+    const { unlocked, locked } = parseProfileHover(siteConfig.profile_hover);
+    const ph = placeholdersFromSessionUser(session?.user ?? {});
+    return {
+      unlocked: resolveUserPlaceholders(unlocked, ph),
+      locked: resolveUserPlaceholders(locked, ph),
+    };
+  }, [siteConfig.profile_hover, session?.user]);
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-neutral-900">
@@ -67,43 +72,15 @@ export function AppShell({ siteConfig, bannerKind, deployment, children }: Props
                 <span>Profile</span>
                 <UserCircle className="h-6 w-6" aria-hidden />
               </Link>
-            ) : profileLocked ? (
-              <span
-                role="img"
-                aria-label="Profile (locked)"
-                className="cursor-not-allowed rounded-full opacity-60 focus:outline-none"
-                title="Your profile has been locked by an administrator."
-                data-testid="profile-avatar-button-locked"
-              >
-                {session?.user?.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={session.user.image}
-                    alt=""
-                    className="h-9 w-9 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-neutral-500 to-neutral-800 text-sm font-semibold text-white">
-                    {(session?.user?.initials?.slice(0, 3) ??
-                      session?.user?.name ??
-                      session?.user?.email ??
-                      "?")
-                      .toString()
-                      .slice(0, 3)
-                      .toUpperCase()}
-                  </div>
-                )}
-              </span>
             ) : (
               <button
                 type="button"
                 className="cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-neutral-400"
-                title={resolveUserPlaceholders(
-                  siteConfig.profile_hover,
-                  placeholdersFromSessionUser(session?.user ?? {}),
-                )}
+                title={profileLocked ? profileHoverResolved.locked : profileHoverResolved.unlocked}
                 onClick={() => setProfileOpen(true)}
-                data-testid="profile-avatar-button"
+                data-testid={
+                  profileLocked ? "profile-avatar-button-locked" : "profile-avatar-button"
+                }
               >
                 {session?.user?.image ? (
                   // eslint-disable-next-line @next/next/no-img-element

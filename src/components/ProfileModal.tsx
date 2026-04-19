@@ -13,6 +13,7 @@ type ProfilePayload = {
   initials: string;
   avatar_url: string | null;
   avatar_upload_available?: boolean;
+  profile_locked?: boolean;
 };
 
 type Snapshot = {
@@ -47,6 +48,8 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
   /** True when the user chose Remove; saved avatar is hidden until Save (or cleared on Cancel). */
   const [pendingAvatarRemoval, setPendingAvatarRemoval] = useState(false);
   const [uploadAvailable, setUploadAvailable] = useState(true);
+  /** From API after load: user cannot edit profile fields or avatar (logout / close still allowed). */
+  const [readOnlyProfile, setReadOnlyProfile] = useState(false);
 
   const snapshot = useRef<Snapshot | null>(null);
   const [pendingExit, setPendingExit] = useState<null | "close" | "logout">(null);
@@ -71,6 +74,7 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
   const loadProfile = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setReadOnlyProfile(false);
     try {
       const res = await fetch("/api/user/profile", { credentials: "include" });
       const json = await res.json();
@@ -79,6 +83,7 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
         return;
       }
       const d = json.data as ProfilePayload;
+      setReadOnlyProfile(Boolean(d.profile_locked));
       setEmail(d.email);
       setFullName(d.name);
       setDisplayName(d.display_name);
@@ -105,6 +110,7 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
   }, [open, loadProfile]);
 
   const dirty =
+    !readOnlyProfile &&
     snapshot.current !== null &&
     (fullName.trim() !== snapshot.current.name ||
       displayName.trim() !== snapshot.current.displayName ||
@@ -225,11 +231,19 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
   }
 
   function handleCloseAttempt() {
+    if (readOnlyProfile) {
+      onClose();
+      return;
+    }
     if (dirty) setPendingExit("close");
     else onClose();
   }
 
   function handleLogoutAttempt() {
+    if (readOnlyProfile) {
+      void signOut({ callbackUrl: "/" });
+      return;
+    }
     if (dirty) setPendingExit("logout");
     else void signOut({ callbackUrl: "/" });
   }
@@ -338,6 +352,61 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
         <div className="max-h-[min(80vh,640px)] overflow-y-auto px-5 py-4">
           {loading ? (
             <p className="text-sm text-neutral-600">Loading…</p>
+          ) : readOnlyProfile ? (
+            <div className="space-y-4">
+              <p className="text-sm text-neutral-500">{email}</p>
+
+              <div>
+                <span className="block text-sm font-medium text-neutral-700">Full name</span>
+                <p
+                  className="mt-1 rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900"
+                  data-testid="profile-full-name"
+                >
+                  {fullName}
+                </p>
+              </div>
+
+              <div>
+                <span className="block text-sm font-medium text-neutral-700">Display name</span>
+                <p
+                  className="mt-1 rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900"
+                  data-testid="profile-display-name"
+                >
+                  {displayName}
+                </p>
+              </div>
+
+              <div>
+                <span className="block text-sm font-medium text-neutral-700">Initial(s)</span>
+                <p
+                  className="mt-1 rounded border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm uppercase text-neutral-900"
+                  data-testid="profile-initials"
+                >
+                  {initialsDisplay}
+                </p>
+              </div>
+
+              <div>
+                <span className="block text-sm font-medium text-neutral-700">Avatar</span>
+                <div className="mt-2 flex items-center gap-4">
+                  {showAvatarImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={avatarSrc}
+                      alt=""
+                      className="h-20 w-20 shrink-0 rounded-full object-cover ring-2 ring-neutral-200"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-neutral-600 to-neutral-900 text-xl font-bold text-white ring-2 ring-neutral-200"
+                      aria-hidden
+                    >
+                      {initialsDisplay}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           ) : (
             <form
               className="space-y-4"
