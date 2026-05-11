@@ -1,5 +1,8 @@
 import { rateLimitMiddleware, RATE_LIMITS } from "@/lib/rateLimit";
-import { getCurrentEnvironment } from "@/lib/appEnvironment";
+import {
+  allowAutoConfirmLocalRegistration,
+  getCurrentEnvironment,
+} from "@/lib/appEnvironment";
 import { validateRegistration } from "@/lib/validation/validators";
 import { hashPassword } from "@/lib/services/authService";
 import { generateSecureToken } from "@/lib/services/tokenService";
@@ -7,6 +10,7 @@ import {
   createUser,
   getUserByEmail,
   setResetToken,
+  updateUserConfirmation,
 } from "@/lib/repositories/userRepository";
 import { TokenExpiration } from "@/lib/constants";
 import {
@@ -47,6 +51,12 @@ export async function POST(request: Request) {
     const env = getCurrentEnvironment();
     const existing = await getUserByEmail(body.email, env);
     if (existing) {
+      if (allowAutoConfirmLocalRegistration()) {
+        return successResponse(
+          { sent: true, duplicate: true },
+          "An account with this email already exists — sign in, or use another email.",
+        );
+      }
       const resetToken = generateSecureToken();
       const resetExpires = new Date(Date.now() + TokenExpiration.RESET_MS);
       await setResetToken(body.email.trim(), env, resetToken, resetExpires);
@@ -70,7 +80,7 @@ export async function POST(request: Request) {
     const token = generateSecureToken();
     const expires = new Date(Date.now() + TokenExpiration.CONFIRMATION_MS);
 
-    await createUser({
+    const created = await createUser({
       email: body.email,
       name: body.name.trim(),
       passwordHash,
@@ -78,6 +88,18 @@ export async function POST(request: Request) {
       confirmationToken: token,
       confirmationExpires: expires,
     });
+
+    if (allowAutoConfirmLocalRegistration()) {
+      await updateUserConfirmation(created.id, env);
+      console.info(
+        "[register] AUTO_CONFIRM_LOCAL_REGISTRATION: confirmed without email for",
+        body.email.trim().toLowerCase(),
+      );
+      return successResponse(
+        { sent: true, localAutoConfirmed: true as const },
+        "Your account is ready — you can sign in with the password you chose.",
+      );
+    }
 
     const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
     const confirmUrl = `${base.replace(/\/$/, "")}/api/auth/confirm?token=${encodeURIComponent(token)}`;

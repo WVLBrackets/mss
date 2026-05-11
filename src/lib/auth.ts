@@ -64,6 +64,7 @@ export const authOptions: NextAuthOptions = {
             fullName: user.name,
             image: sessionImageFromStoredAvatar(user.avatar_url),
             initials: user.initials,
+            profileLocked: user.profile_locked,
           };
         }
 

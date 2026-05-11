@@ -26,6 +26,24 @@ export function isLocalDevelopment(): boolean {
 }
 
 /**
+ * When true, `POST /api/auth/register` skips confirmation email and marks new users confirmed
+ * immediately (see register route). **All** of the following must hold:
+ *
+ * - `AUTO_CONFIRM_LOCAL_REGISTRATION` is exactly `"true"`
+ * - {@link isLocalDevelopment} — `next dev` on a machine without `VERCEL` set
+ * - {@link getCurrentEnvironment} is {@link Environment.DEVELOPMENT}
+ *
+ * Vercel (Preview/Production) and `next start` with `NODE_ENV=production` never satisfy this.
+ * Never enable while `DATABASE_URL` points at shared non-dev data.
+ */
+export function allowAutoConfirmLocalRegistration(): boolean {
+  if (process.env.AUTO_CONFIRM_LOCAL_REGISTRATION !== "true") return false;
+  if (!isLocalDevelopment()) return false;
+  if (getCurrentEnvironment() !== Environment.DEVELOPMENT) return false;
+  return true;
+}
+
+/**
  * True for Vercel preview deployments (non-production).
  */
 export function isVercelPreview(): boolean {

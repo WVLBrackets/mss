@@ -220,8 +220,11 @@ function SignInPageInner() {
 
         {devBypass ? (
           <p className="mt-3 rounded bg-orange-50 p-2 text-xs text-orange-900">
-            Local dev: auth bypass is on. Sign in uses the dev admin user without real credentials.
-            Use staging/preview to exercise registration and email confirmation end-to-end.
+            Local dev: auth bypass is on — sign-in uses the configured dev user without checking the password.
+            Turn bypass off to test normal sign-in. For Create account without email, set{" "}
+            <code className="text-[11px]">AUTO_CONFIRM_LOCAL_REGISTRATION=true</code> in{" "}
+            <code className="text-[11px]">.env.local</code> (local <code className="text-[11px]">next dev</code>{" "}
+            only). Use staging for real confirmation email flows.
           </p>
         ) : null}
 
