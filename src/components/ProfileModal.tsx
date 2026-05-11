@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { LogOut, X } from "lucide-react";
 import { fetchWithCsrf } from "@/lib/fetchWithCsrf";
 import { avatarSrcForImg } from "@/lib/blobAvatar";
+import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 
 type ProfilePayload = {
   email: string;
@@ -55,6 +56,8 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
   const [pendingExit, setPendingExit] = useState<null | "close" | "logout">(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /** Raw pick before crop step; `blob:` URL revoked when crop finishes or is cancelled. */
+  const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null);
 
   const resetFromSnapshot = useCallback(() => {
     const s = snapshot.current;
@@ -63,6 +66,10 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
     setDisplayName(s.displayName);
     setInitials(s.initials);
     setServerAvatarUrl(s.avatarUrl);
+    setAvatarCropSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setPendingPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return null;
@@ -109,6 +116,15 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
     void loadProfile();
   }, [open, loadProfile]);
 
+  useEffect(() => {
+    if (!open) {
+      setAvatarCropSrc((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    }
+  }, [open]);
+
   const dirty =
     !readOnlyProfile &&
     snapshot.current !== null &&
@@ -129,10 +145,13 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    setAvatarCropSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
     if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
-    const url = URL.createObjectURL(file);
-    setPendingPreviewUrl(url);
-    setPendingFile(file);
+    setPendingPreviewUrl(null);
+    setPendingFile(null);
     setPendingAvatarRemoval(false);
   }
 
@@ -281,6 +300,26 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
     onClose();
   }
 
+  function cancelAvatarCrop() {
+    setAvatarCropSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }
+
+  function completeAvatarCrop(file: File) {
+    setAvatarCropSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPendingPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setPendingFile(file);
+    setPendingAvatarRemoval(false);
+  }
+
   if (!open) return null;
 
   const showAvatarImage = Boolean(
@@ -291,13 +330,23 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
   const initialsDisplay = initials.trim().toUpperCase().slice(0, 3) || "?";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      role="dialog"
-      aria-modal="true"
-      data-testid="profile-modal"
-    >
-      <div className="relative w-full max-w-lg rounded-lg bg-white shadow-lg">
+    <>
+      {avatarCropSrc ? (
+        <AvatarCropDialog
+          imageSrc={avatarCropSrc}
+          onCancel={cancelAvatarCrop}
+          onComplete={(file) => {
+            completeAvatarCrop(file);
+          }}
+        />
+      ) : null}
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        role="dialog"
+        aria-modal="true"
+        data-testid="profile-modal"
+      >
+        <div className="relative w-full max-w-lg rounded-lg bg-white shadow-lg">
         {pendingExit ? (
           <div className="absolute inset-0 z-[60] flex items-center justify-center rounded-lg bg-black/40 p-4">
             <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl">
@@ -506,7 +555,7 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
                     </div>
                     <p className="mt-1 text-xs text-neutral-500">
                       {uploadAvailable
-                        ? "Applied when you click Save."
+                        ? "Choose a photo to adjust zoom and position, then save from your profile."
                         : "Uploads require BLOB_READ_WRITE_TOKEN in Vercel for this environment."}
                     </p>
                   </div>
@@ -553,5 +602,6 @@ export function ProfileModal({ open, onClose, onUpdated }: Props) {
         </div>
       </div>
     </div>
+    </>
   );
 }

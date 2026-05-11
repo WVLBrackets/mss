@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { CheckCircle2, KeyRound, Pencil, Trash2 } from "lucide-react";
 import { fetchWithCsrf } from "@/lib/fetchWithCsrf";
 import { avatarSrcForImg } from "@/lib/blobAvatar";
+import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 
 interface Row {
   id: string;
@@ -457,7 +458,14 @@ function EditUserDialog({
   const [busy, setBusy] = useState(false);
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (avatarCropSrc) URL.revokeObjectURL(avatarCropSrc);
+    };
+  }, [avatarCropSrc]);
 
   /**
    * Uploads avatar for this row via admin API (persists to DB). Returns whether upload succeeded.
@@ -518,14 +526,22 @@ function EditUserDialog({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    setAvatarCropSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
     if (pendingPreview) URL.revokeObjectURL(pendingPreview);
-    setPendingPreview(URL.createObjectURL(file));
-    setPendingFile(file);
+    setPendingPreview(null);
+    setPendingFile(null);
   }
 
   async function clearAvatar() {
     if (!confirm("Remove avatar image for this user?")) return;
     setAvatarUrl(null);
+    setAvatarCropSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     if (pendingPreview) URL.revokeObjectURL(pendingPreview);
     setPendingPreview(null);
     setPendingFile(null);
@@ -550,8 +566,31 @@ function EditUserDialog({
   const initialsDisplay = initials.trim().toUpperCase().slice(0, 3) || "?";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow">
+    <>
+      {avatarCropSrc ? (
+        <AvatarCropDialog
+          imageSrc={avatarCropSrc}
+          onCancel={() =>
+            setAvatarCropSrc((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return null;
+            })
+          }
+          onComplete={(file) => {
+            setAvatarCropSrc((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return null;
+            });
+            setPendingPreview((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return URL.createObjectURL(file);
+            });
+            setPendingFile(file);
+          }}
+        />
+      ) : null}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow">
         <h3 className="font-semibold">Edit user</h3>
         <div className="mt-3 space-y-3">
           <label className="block text-sm">
@@ -631,7 +670,7 @@ function EditUserDialog({
               </div>
             </div>
             <p className="mt-1 text-xs text-neutral-500">
-              Requires BLOB_READ_WRITE_TOKEN on the server. Click Save after choosing a file.
+              Requires BLOB_READ_WRITE_TOKEN on the server. Adjust zoom and position, then click Save.
             </p>
           </div>
         </div>
@@ -650,6 +689,7 @@ function EditUserDialog({
         </div>
       </div>
     </div>
+    </>
   );
 }
 
