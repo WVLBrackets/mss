@@ -1,4 +1,4 @@
-import { getCurrentEnvironment } from "@/lib/appEnvironment";
+import { getCurrentEnvironment, isLocalDevelopment } from "@/lib/appEnvironment";
 import { Environment, type EnvironmentValue } from "@/lib/constants";
 import { parseConfigButton } from "@/lib/configButton";
 
@@ -424,9 +424,38 @@ function buildConfig(map: Map<string, string>): SiteConfig | SiteConfigFailure {
   return out as SiteConfig;
 }
 
+/**
+ * Minimal Config Sheet rows for `next dev` on a workstation when `SITE_CONFIG_*` env vars
+ * are not set, so the app can boot without Google Sheets.
+ */
+function localDevelopmentFallbackMap(): Map<string, string> {
+  return new Map<string, string>([
+    ["site_name", "MSS (local dev)"],
+    [
+      "site_subtitle",
+      "Add SITE_CONFIG_SHEET_ID and SITE_CONFIG_GID_STAGE to .env.local to use your Config Sheet",
+    ],
+    ["site_logo", "site/logo.svg"],
+    ["signin_welcome", "Sign in"],
+    ["signup_welcome", "Create an account"],
+    ["profile_hover", "Open your profile|View profile (read-only)"],
+    ["acct_confirm_success_header", "Account confirmed"],
+    ["acct_confirm_success_message1", "Your account is ready. You can sign in when you like."],
+    ["acct_confirm_success_button1", "Home|/home"],
+    ["acct_confirm_success_button2", "X"],
+    ["footer_text", "Local development — configuration not loaded from Google Sheets."],
+    ["email_contact_address", "dev@example.com"],
+    ["welcome_greeting_logged_in", "Welcome back, {Display Name}"],
+    ["welcome_greeting_logged_out", "Welcome"],
+  ]);
+}
+
 async function fetchConfigUncached(): Promise<SiteConfig | SiteConfigFailure> {
   const url = getSheetCsvUrl();
   if (!url) {
+    if (isLocalDevelopment()) {
+      return buildConfig(localDevelopmentFallbackMap());
+    }
     return {
       kind: "config_error",
       reason: "fetch_failed",
