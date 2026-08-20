@@ -12,6 +12,7 @@ With `DEV_AUTH_BYPASS=true` and `NEXT_PUBLIC_DEV_AUTH_BYPASS=true` in `.env.loca
 
 ## Documentation
 
+- [v1 scheduler discovery questions (open)](docs/product/V1_DISCOVERY.md)
 - [Project start checklist (MSS status)](docs/MSS_PROJECT_START_CHECKLIST_COMPLETED.md)
 - [Template checklist](docs/templates/PROJECT_START_CHECKLIST.md)
 - [Iteration log / toolkit improvements](docs/startup/ITERATION_LOG.md)

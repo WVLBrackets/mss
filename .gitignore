@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# legacy scheduler exports (contain real staff names; never commit to public repo)
+/docs/legacy-private/
