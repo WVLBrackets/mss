@@ -13,11 +13,13 @@ because he reviews them with studio staff — be patient, but do not drop them.
 When the conversation touches MSS product design, scheduling features, or "what's next":
 
 1. Read `docs/product/V1_DISCOVERY.md` and report the scoreboard (how many open).
-2. Ask follow-ups on 🔴 Open and 🟡 Partial items, prioritizing questions 1–3.
+2. Ask follow-ups on 🔴 Open and 🟡 Partial items, following the priority order at the
+   bottom of that file.
 3. Record answers in that file and update the status markers in the same commit.
 
-Do not begin building scheduling features while questions 1–3 (assignment output,
-people-per-slot, availability granularity) are still 🔴 — they determine the data model.
+Do not begin building scheduling features while the data-model questions (people per
+slot, availability granularity, shared teach/desk grid, desk shift definition) are
+unresolved.
 
 Never commit `docs/legacy-private/` contents; the repo is public and those exports
 contain real staff names.
