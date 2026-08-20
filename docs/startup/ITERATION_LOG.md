@@ -14,6 +14,7 @@ Lessons from the MSS greenfield pass to improve the next project kickoff.
 5. **First DB migration without an admin session:** `/api/init-database` supports an optional `DATABASE_BOOTSTRAP_SECRET` header so the first migration can be run before any user exists (document in checklist env matrix).
 6. **Public site config for auth pages:** Auth UI needs welcome copy from the Config Sheet without duplicating keys in code. MSS exposes `GET /api/site-config` for non-secret keys only; consider adding this to BASE_APP_REQUIREMENTS as an optional pattern.
 7. **Gmail SMTP spam folder:** Path B mail from a new `@gmail.com` sender often lands in Spam until users mark “Not spam” and `EMAIL_FROM` uses a display name. Document §2.5 deliverability steps in project checklists; send multipart plain+HTML when possible.
+8. **Neon branch split before prod:** Vercel “All Environments” + one `DATABASE_URL` often means Preview and Production share Neon `main`; app `users.environment` is logical isolation only. Document a **required** pre-prod checklist to wire Preview to `preview/staging` (see MSS checklist callout).
 
 ## Suggested template doc edits
 

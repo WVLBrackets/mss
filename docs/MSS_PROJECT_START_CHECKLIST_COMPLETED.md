@@ -10,10 +10,37 @@ This is a **working copy** of [docs/templates/PROJECT_START_CHECKLIST.md](templa
 | **Staging (Preview) URL** | https://mss-git-staging-ncaatourney-gmailcoms-projects.vercel.app (`staging` branch) |
 | Preview URL pattern | Unique URL per deployment (see **Deployments** in Vercel; often `mss-git-<branch>-<org>.vercel.app` style for PRs) |
 | Transactional email (v1) | **Path B — Gmail SMTP** ([template §2.4 Path B](templates/PROJECT_START_CHECKLIST.md#24-email-transactional)): dedicated inbox **`mystudioscheduler@gmail.com`**, Google **2-Step Verification** + **App Password** → `EMAIL_SERVER_*` / `EMAIL_FROM` in Vercel (Preview + Production) and `.env.local`. No custom domain / Resend for v1. |
-| Neon project | _fill from Neon / Vercel Storage dashboard (connected; staging auth verified Aug 2026)_ |
-| Config Sheet ID | _fill from Google Sheet URL (`/d/` … `/edit`)_ |
-| Tab `PROD` GID | _fill from `PROD` tab URL `gid=`_ |
-| Tab `STAGE` GID | _fill from `STAGE` tab URL `gid=`_ |
+| Neon project | **`neon-mss`** (Vercel Storage). Branches: **`main`** (active) + **`preview/staging`** (idle). **Current:** both Vercel envs share `main`; see **Before production launch** section below. |
+| Config Sheet ID | `1-sMYJErn0Nuk2MmTPfNnix_jerqsriTqeH8UASaSPoU` |
+| Tab `PROD` GID | `0` |
+| Tab `STAGE` GID | `483518827` |
+
+---
+
+## ⚠️ BEFORE PRODUCTION LAUNCH — Neon Preview / Production split (required)
+
+**Do not skip.** As of Aug 2026, **Preview and Production both use Neon branch `main`** via shared `DATABASE_URL` (All Environments). The app isolates data with the `users.environment` column (`preview` vs `production`) — verified: 6 preview + 2 production rows on `main`. That is **acceptable for staging-only work** but **not sufficient for a real production rollout**.
+
+**Unused today:** Neon branch `preview/staging` (idle; created by Vercel integration).
+
+### When to do this
+
+- **Before** Part 4 step 7 (production deploy + init DB + prod smoke test).
+- **Before** any real customer data on production.
+
+### Split checklist (plan ~30–60 min)
+
+1. [ ] In Vercel → **mss** → **Storage** → **neon-mss**: configure Preview to use branch **`preview/staging`** (or set Preview-scoped `PREVIEW_POSTGRES_URL` / `DATABASE_URL` to that branch’s **pooled** connection string — not Production’s `main` URL).
+2. [ ] Keep Production on Neon branch **`main`** only.
+3. [ ] Redeploy **staging**; confirm Neon **`preview/staging`** shows **Compute last active: now** (and `main` no longer receives preview-only traffic).
+4. [ ] On Preview deployment: `POST /api/init-database` (bootstrap secret or admin) against **`preview/staging`**.
+5. [ ] Re-create or migrate staging test users on the preview branch if needed (preview branch DB starts empty or forked from parent — verify in SQL Editor).
+6. [ ] Smoke test staging auth/admin again on the split DB.
+7. [ ] Update this section: check all boxes above; note date completed.
+
+### Why
+
+Shared `main` does not protect against accidental SQL, schema migrations, or load from staging affecting production tables. The `environment` column protects **app runtime** only.
 
 ---
 
@@ -134,7 +161,7 @@ When you have finished steps 1–8 (and 9–10 as applicable), check the **1.2**
 ### 2.1 Neon (PostgreSQL)
 
 - [x] Create **Neon** project (prod + non-prod recommended). _(Vercel-managed integration; preview DB verified via staging auth flows.)_
-- [x] Copy pooler URLs into Vercel env: `PRODUCTION_POSTGRES_URL`, `PREVIEW_POSTGRES_URL`, and `LOCAL_POSTGRES_URL` in `.env.local`. _(Or `DATABASE_URL` injected by Vercel ↔ Neon integration per environment.)_
+- [x] Copy pooler URLs into Vercel env: `PRODUCTION_POSTGRES_URL`, `PREVIEW_POSTGRES_URL`, and `LOCAL_POSTGRES_URL` in `.env.local`. _(Today: single `DATABASE_URL` for All Environments → `main`; split required before prod — see top of this file.)_
 
 #### How to — Neon (beginner walkthrough)
 
@@ -371,7 +398,7 @@ Use [.env.example](../../.env.example) as the local template. Mirror the same ke
 4. [x] Config Sheet + GIDs.
 5. [x] Deploy preview; call **`/api/init-database`** (admin session or bootstrap secret).
 6. [x] Smoke test preview: config, **Staging** banner, register → confirm → sign-in, admin users, profile/avatar (if `BLOB_READ_WRITE_TOKEN` set). _(Completed on `staging` branch, Aug 2026.)_
-7. [ ] Production env vars; deploy production; init DB; smoke test (no banner). _(Deferred — continue product work on staging.)_
+7. [ ] Production env vars; deploy production; init DB; smoke test (no banner). _(Deferred — continue product work on staging.)_ **Blocked until [Neon Preview/Production split](#-before-production-launch--neon-preview--production-split-required) is complete.**
 
 ---
 
