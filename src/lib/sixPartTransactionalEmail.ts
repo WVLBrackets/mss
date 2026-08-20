@@ -66,3 +66,38 @@ export function buildSixPartEmailHtml(parts: SixPartEmailContent): string {
   <div style="text-align:left;font-size:80%;text-wrap:pretty">${escapeHtml(footer)}</div>
 </div>`.trim();
 }
+
+/**
+ * Plain-text alternative for multipart mail (improves deliverability vs HTML-only).
+ */
+export function buildSixPartEmailPlainText(
+  parts: SixPartEmailContent,
+  message2Plain: string,
+): string {
+  const { header, greetingResolved, message1, footer } = parts;
+  return [header, "", greetingResolved, "", message1, "", message2Plain, "", footer]
+    .join("\n")
+    .trim();
+}
+
+/**
+ * Resolves `message2` sheet value to a plain line; appends action URL when piped link format is used.
+ */
+export function buildPipedLinkMessage2Plain(
+  raw: string,
+  actionUrl: string,
+  placeholderPattern: RegExp,
+  fallbackLinkLabel: string,
+): string {
+  const trimmed = raw.trim();
+  const pipe = trimmed.indexOf("|");
+  if (pipe === -1) {
+    return `${trimmed}\n\n${fallbackLinkLabel}: ${actionUrl}`;
+  }
+  const linkText = trimmed.slice(0, pipe).trim();
+  const afterPipe = trimmed.slice(pipe + 1).trim();
+  if (!placeholderPattern.test(afterPipe)) {
+    return trimmed;
+  }
+  return `${linkText}: ${actionUrl}`;
+}

@@ -7,12 +7,13 @@ This is a **working copy** of [docs/templates/PROJECT_START_CHECKLIST.md](templa
 | GitHub repository | https://github.com/WVLBrackets/mss |
 | Vercel project name | `mss` (dashboard); production host `mss-umber.vercel.app` |
 | Production URL | https://mss-umber.vercel.app |
+| **Staging (Preview) URL** | https://mss-git-staging-ncaatourney-gmailcoms-projects.vercel.app (`staging` branch) |
 | Preview URL pattern | Unique URL per deployment (see **Deployments** in Vercel; often `mss-git-<branch>-<org>.vercel.app` style for PRs) |
 | Transactional email (v1) | **Path B — Gmail SMTP** ([template §2.4 Path B](templates/PROJECT_START_CHECKLIST.md#24-email-transactional)): dedicated inbox **`mystudioscheduler@gmail.com`**, Google **2-Step Verification** + **App Password** → `EMAIL_SERVER_*` / `EMAIL_FROM` in Vercel (Preview + Production) and `.env.local`. No custom domain / Resend for v1. |
-| Neon project | _pending_ |
-| Config Sheet ID | _pending_ |
-| Tab `PROD` GID | _pending_ |
-| Tab `STAGE` GID | _pending_ |
+| Neon project | _fill from Neon / Vercel Storage dashboard (connected; staging auth verified Aug 2026)_ |
+| Config Sheet ID | _fill from Google Sheet URL (`/d/` … `/edit`)_ |
+| Tab `PROD` GID | _fill from `PROD` tab URL `gid=`_ |
+| Tab `STAGE` GID | _fill from `STAGE` tab URL `gid=`_ |
 
 ---
 
@@ -132,8 +133,8 @@ When you have finished steps 1–8 (and 9–10 as applicable), check the **1.2**
 
 ### 2.1 Neon (PostgreSQL)
 
-- [ ] Create **Neon** project (prod + non-prod recommended).
-- [ ] Copy pooler URLs into Vercel env: `PRODUCTION_POSTGRES_URL`, `PREVIEW_POSTGRES_URL`, and `LOCAL_POSTGRES_URL` in `.env.local`.
+- [x] Create **Neon** project (prod + non-prod recommended). _(Vercel-managed integration; preview DB verified via staging auth flows.)_
+- [x] Copy pooler URLs into Vercel env: `PRODUCTION_POSTGRES_URL`, `PREVIEW_POSTGRES_URL`, and `LOCAL_POSTGRES_URL` in `.env.local`. _(Or `DATABASE_URL` injected by Vercel ↔ Neon integration per environment.)_
 
 #### How to — Neon (beginner walkthrough)
 
@@ -233,9 +234,9 @@ Use this if a connection string was **posted somewhere unsafe** (chat, ticket, s
 
 ### 2.2 Google Config Sheet
 
-- [ ] Create Sheet with tabs **`PROD`** and **`STAGE`**.
-- [ ] Add required keys from [BASE_APP_REQUIREMENTS §7](templates/BASE_APP_REQUIREMENTS.md) on both tabs.
-- [ ] Enable **public CSV export**; record Sheet ID and GIDs in env (`SITE_CONFIG_*`).
+- [x] Create Sheet with tabs **`PROD`** and **`STAGE`**. _(Staging loads `site_name`, logo, subtitles, greetings — verified on preview.)_
+- [x] Add required keys from [BASE_APP_REQUIREMENTS §7](templates/BASE_APP_REQUIREMENTS.md) on both tabs.
+- [x] Enable **public CSV export**; record Sheet ID and GIDs in env (`SITE_CONFIG_*`). _(Env set in Vercel; paste IDs into summary table above for your records.)_
 
 #### How to — Google Config Sheet (beginner walkthrough)
 
@@ -328,7 +329,24 @@ Generic branching doc: [PROJECT_START_CHECKLIST.md §2.4 — Path A vs Path B](t
 - [x] **App password** created ([App passwords](https://myaccount.google.com/apppasswords); [help](https://support.google.com/accounts/answer/185833)) — used as **`EMAIL_SERVER_PASSWORD`** in Vercel and `.env.local` (never the normal Gmail password).
 - [x] Vercel env: `EMAIL_SERVER_HOST=smtp.gmail.com`, `EMAIL_SERVER_PORT=587`, `EMAIL_SERVER_SECURE=false`, `EMAIL_SERVER_USER` / `EMAIL_FROM` = `mystudioscheduler@gmail.com` (or `Display Name <mystudioscheduler@gmail.com>`), `EMAIL_SERVER_PASSWORD` = app password — scoped to **Preview** and **Production**; redeploy triggered.
 - [x] Local: same keys in **`.env.local`** for `npm run dev` mail tests (optional).
-- [ ] **Smoke test after deploy:** Preview → register → confirm email; forgot-password → reset email. Repeat on Production when ready.
+- [x] **Smoke test after deploy (Preview):** register → confirm email; forgot-password → reset email. _(Completed on staging branch; reset mail initially landed in Gmail **Spam** — see §2.5 deliverability.)_
+- [ ] **Smoke test (Production):** repeat when promoting `main`.
+
+### 2.5 Email deliverability (Gmail SMTP / Path B)
+
+Staging mail **sends successfully** but may land in **Spam** until reputation improves. Do these once per receiving mailbox (and after changing `EMAIL_FROM`):
+
+1. **Friendly From name (Vercel Preview + Production):** set  
+   `EMAIL_FROM=My Studio Scheduler <mystudioscheduler@gmail.com>`  
+   (must match the Gmail account used for `EMAIL_SERVER_USER`). Redeploy staging after saving.
+2. **Train Gmail:** open a MSS message in Spam → **Not spam**. Optionally drag to Primary.
+3. **Add contact:** add `mystudioscheduler@gmail.com` to Google Contacts.
+4. **Optional filter (receiving inbox):** Gmail → Settings → Filters → From `mystudioscheduler@gmail.com` → Never send to Spam; apply label `MSS`.
+5. **Code (repo):** transactional mail sends **multipart** HTML + plain text and sets `Reply-To` to match `From` (helps filters vs HTML-only).
+6. **Staging subject prefix:** preview subjects include `🟡 Staging 🟡` — intentional; some filters dislike emoji. Production subjects have **no** prefix.
+7. **Before external users:** consider custom domain + Path A (Resend/SendGrid) per template §2.4.
+
+After updating `EMAIL_FROM`, trigger **Forgot password** on staging and confirm the next message shows **My Studio Scheduler** as sender and arrives in Primary (may take a few messages).
 
 ---
 
@@ -348,19 +366,19 @@ Use [.env.example](../../.env.example) as the local template. Mirror the same ke
 ## Part 4 — Order of operations (run when infra exists)
 
 1. [x] Repo on GitHub; push this codebase.
-2. [ ] Neon URLs; Vercel project linked.
-3. [ ] Vercel **Preview** env vars (see template checklist Part 3).
-4. [ ] Config Sheet + GIDs.
-5. [ ] Deploy preview; call **`/api/init-database`** (admin session or bootstrap secret).
-6. [ ] Smoke test preview: config, **Staging** banner, register → confirm → sign-in, admin users, profile/avatar (if `BLOB_READ_WRITE_TOKEN` set).
-7. [ ] Production env vars; deploy production; init DB; smoke test (no banner).
+2. [x] Neon URLs; Vercel project linked.
+3. [x] Vercel **Preview** env vars (see template checklist Part 3).
+4. [x] Config Sheet + GIDs.
+5. [x] Deploy preview; call **`/api/init-database`** (admin session or bootstrap secret).
+6. [x] Smoke test preview: config, **Staging** banner, register → confirm → sign-in, admin users, profile/avatar (if `BLOB_READ_WRITE_TOKEN` set). _(Completed on `staging` branch, Aug 2026.)_
+7. [ ] Production env vars; deploy production; init DB; smoke test (no banner). _(Deferred — continue product work on staging.)_
 
 ---
 
 ## Part 5 — Ongoing per release
 
 - [x] `npm run build` passes in repo (run locally or in CI before releases).
-- [ ] After Config Sheet change: verify behavior if CDN/browser caches CSV (short `revalidate` is used on fetch).
+- [x] After Config Sheet change: verify behavior if CDN/browser caches CSV (short `revalidate` is used on fetch). _(Spot-check on staging when editing sheet.)_
 - [ ] After schema change: run init/migration path on staging before prod.
 
 ---

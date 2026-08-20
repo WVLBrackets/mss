@@ -5,7 +5,9 @@ import type { UserPlaceholderValues } from "@/lib/configPlaceholders";
 import { resolveUserPlaceholders } from "@/lib/configPlaceholders";
 import {
   buildPipedLinkMessage2Html,
+  buildPipedLinkMessage2Plain,
   buildSixPartEmailHtml,
+  buildSixPartEmailPlainText,
   TOKENIZED_CONFIRMATION_LINK,
   TOKENIZED_PW_RESET_LINK,
 } from "@/lib/sixPartTransactionalEmail";
@@ -65,17 +67,29 @@ export async function sendConfirmationEmail(
     TOKENIZED_CONFIRMATION_LINK,
     "Confirm email",
   );
-  const html = buildSixPartEmailHtml({
+  const content = {
     header: cfg.reg_email_header,
     greetingResolved: greeting,
     message1: cfg.reg_email_message1,
     message2Html,
     footer: cfg.reg_email_footer,
-  });
+  };
+  const html = buildSixPartEmailHtml(content);
+  const text = buildSixPartEmailPlainText(
+    content,
+    buildPipedLinkMessage2Plain(
+      cfg.reg_email_message2,
+      confirmUrl,
+      TOKENIZED_CONFIRMATION_LINK,
+      "Confirm email",
+    ),
+  );
   await transport.sendMail({
     from: fromAddress(),
     to,
+    replyTo: fromAddress(),
     subject: `${emailSubjectEnvironmentPrefix()}${cfg.reg_email_subject.trim()}`,
+    text,
     html,
   });
 }
@@ -107,17 +121,29 @@ export async function sendPasswordResetEmail(
     TOKENIZED_PW_RESET_LINK,
     "Reset password",
   );
-  const html = buildSixPartEmailHtml({
+  const content = {
     header: cfg.pwreset_email_header,
     greetingResolved: greeting,
     message1: cfg.pwreset_email_message1,
     message2Html,
     footer: cfg.pwreset_email_footer,
-  });
+  };
+  const html = buildSixPartEmailHtml(content);
+  const text = buildSixPartEmailPlainText(
+    content,
+    buildPipedLinkMessage2Plain(
+      cfg.pwreset_email_message2,
+      resetUrl,
+      TOKENIZED_PW_RESET_LINK,
+      "Reset password",
+    ),
+  );
   await transport.sendMail({
     from: fromAddress(),
     to,
+    replyTo: fromAddress(),
     subject: `${emailSubjectEnvironmentPrefix()}${cfg.pwreset_email_subject.trim()}`,
+    text,
     html,
   });
 }
@@ -151,17 +177,29 @@ export async function sendDuplicateRegistrationEmail(
     TOKENIZED_PW_RESET_LINK,
     "Reset password",
   );
-  const html = buildSixPartEmailHtml({
+  const content = {
     header,
     greetingResolved: greeting,
     message1,
     message2Html,
     footer,
-  });
+  };
+  const html = buildSixPartEmailHtml(content);
+  const text = buildSixPartEmailPlainText(
+    content,
+    buildPipedLinkMessage2Plain(
+      cfg.dup_email_message2,
+      resetUrl,
+      TOKENIZED_PW_RESET_LINK,
+      "Reset password",
+    ),
+  );
   await transport.sendMail({
     from: fromAddress(),
     to,
+    replyTo: fromAddress(),
     subject: `${emailSubjectEnvironmentPrefix()}${cfg.dup_email_subject.trim()}`,
+    text,
     html,
   });
 }
